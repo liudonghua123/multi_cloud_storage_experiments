@@ -1,6 +1,6 @@
 from io import BytesIO
 import os
-import sys
+from os.path import dirname, join, realpath, getsize
 import logging
 from env_loader import load_env
 from datetime import datetime
@@ -8,15 +8,13 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
-# config logging for both stdout and file
 
-logging.basicConfig(
-    format="%(levelname)s %(asctime)s - %(message)s",
-    level=logging.INFO,
-    handlers=[logging.FileHandler("server.log"), logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger()
-
+import sys
+# In order to run this script directly, you need to add the parent directory to the sys.path
+# Or you need to run this script in the parent directory using the command: python -m server.server
+sys.path.append(dirname(realpath('.')))
+from common.config_logging import init_logging
+logger = init_logging('server.log')
 
 # Load the common configurations from .env file and environment variables
 env = load_env("./", export_to_env=True)
@@ -62,9 +60,9 @@ def get():
 def put():
     file = request.files["file"]
     # save the uploaded file to a temporary file
-    temp_file_path = os.path.join(os.getcwd(), "__tmp__")
+    temp_file_path = join(dirname(realpath(__file__)), "__tmp__")
     file.save(temp_file_path)
-    file_upload_size = os.path.getsize(temp_file_path)
+    file_upload_size = getsize(temp_file_path)
     logging.info(
         f"processed uploaded file: {file.filename}, saved to {temp_file_path}, size of {file_upload_size}"
     )
