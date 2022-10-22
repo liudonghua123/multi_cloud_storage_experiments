@@ -19,6 +19,7 @@ from requests.exceptions import Timeout, ConnectionError
 # In order to run this script directly, you need to add the parent directory to the sys.path
 # Or you need to run this script in the parent directory using the command: python -m client.algorithm
 sys.path.append(dirname(realpath(".")))
+from common.utility import get_latency
 from common.config_logging import init_logging
 logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 
@@ -70,51 +71,6 @@ class AW_CUCB:
         self.placement_count = self.k if self.read else self.n
         
         
-    async def do_request(self, cloud_id) -> list:
-        # make a request to cloud provider
-        result = 'success'
-        try:
-            size = int(self.data_size / self.k)
-            if self.read:
-                url = f"{cloud_providers[cloud_id]}/get?size={size}"
-                logger.info(f"make read request url: {url}")
-                response = requests.get(url, timeout=10)
-                if response.status_code != 200:
-                    result = 'fail'
-            else:
-                url = f"{cloud_providers[cloud_id]}/put?size={size}"
-                logger.info(f"make read request url: {url}")
-                response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
-                if response.status_code != 200:
-                    result = 'fail'
-        except Timeout:
-            logger.error(f'The request {url} timed out')
-            result = 'timeout'
-        except ConnectionError as e:
-            logger.error(f'The request {url} connection_error!')
-            result = 'connection_error'
-        except:
-            logger.error(f'The request {url} error!')
-            result = 'error'
-        return cloud_id, result
-        
-    async def get_latency(self, clould_placements, tick):
-        # make a parallel request to cloud providers which is enabled in clould_placements
-        request_tasks = [asyncio.create_task(self.do_request(cloud_id)) for cloud_id, enabled in enumerate(clould_placements) if enabled == 1]
-        logger.info(f"{tick} requests started at {time.strftime('%X')}")
-        start_time = time.time()
-        latency_cloud = np.zeros((self.N, ))
-        for task in asyncio.as_completed(request_tasks):
-            cloud_id, result = await task
-            if result != 'success':
-                logger.error(f"request to cloud {cloud_id} failed")
-            else:
-                latency = time.time() - start_time
-                latency_cloud[cloud_id] = latency
-                logger.info(f'request to cloud cloud_id: {cloud_id}, res: {result}, used {latency} seconds')
-        logger.info(f"{tick} requests ended at {time.strftime('%X')}")
-        return latency_cloud
-        
     def processing(self):
         # initialization
         τ = np.full((self.N,),1)
@@ -138,7 +94,7 @@ class AW_CUCB:
                 # make a request to the cloud and save the latency to the latency_cloud_timed
                 # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
                 logger.info(f"placement_policy_timed[{tick}]: {placement_policy_timed[tick]}")
-                latency_cloud = asyncio.run(self.get_latency(placement_policy_timed[tick], tick))
+                latency_cloud = asyncio.run(get_latency(placement_policy_timed[tick], tick, self.N, self.k, cloud_providers, self.data_size, self.read))
                 logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
                 latency_cloud_timed[tick] = latency_cloud
             elif tick < self.N:
@@ -149,7 +105,7 @@ class AW_CUCB:
                 placement_policy_timed[tick] = [1 if i in placement_policy else 0 for i in range(self.N)]
                 # make a request to the cloud and save the latency to the latency_cloud_timed
                 # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
-                latency_cloud = asyncio.run(self.get_latency(placement_policy_timed[tick], tick))
+                latency_cloud = asyncio.run(self.get_latency(placement_policy_timed[tick], tick, self.N, self.k, cloud_providers, self.data_size, self.read))
                 logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
                 latency_cloud_timed[tick] = latency_cloud
             else:
