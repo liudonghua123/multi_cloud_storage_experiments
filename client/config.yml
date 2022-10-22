@@ -5,4 +5,14 @@ storage_cost: [0.02,0.105,0.018,0.023,0.15,0.023]
 read_cost: [0.21,0.199,0.07,0.07,0.02,0.07]
 
 # 各个云写流量的价格（写入每GB多少钱）
-read_cost: [0.21,0.199,0.07,0.07,0.02,0.07]
+write_cost: [0.21,0.199,0.07,0.07,0.02,0.07]
+
+# 云节点http服务的base_url, 拼接上/get,/put即是读写的endpoint
+# 分别对应 google, rackspace, amazon, azure, aliyun, tencent
+cloud_providers:
+  - http://127.0.0.1:8080
+  - http://127.0.0.1:8080
+  - http://127.0.0.1:8080
+  - http://127.0.0.1:8080
+  - http://127.0.0.1:8080
+  - http://127.0.0.1:8080
