@@ -2,7 +2,7 @@ import sys
 import time
 import os
 from os.path import dirname, join, realpath
-
+import itertools
 import math
 import numpy as np
 # ndarray for type hints
@@ -52,7 +52,7 @@ cloud_providers : list[str] = config['cloud_providers']
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, default_window_size=5, ticks=100, N=6, n=3, k=2, read=True, ψ1=0.5, ψ2=0.5, data_size=1024, ξ=0.5, b=0.5, δ=0.5) -> None:
+    def __init__(self, default_window_size=5, ticks=100, N=6, n=3, k=2, read=True, ψ1=0.5, ψ2=0.5, data_size=1024, ξ=0.5, b=0.5, δ=0.5, optimize_initial_exploration=True, LB=None):
         self.default_window_size = default_window_size
         self.N = N
         self.ticks=ticks
@@ -65,6 +65,8 @@ class AW_CUCB:
         self.ξ = ξ
         self.b = b
         self.δ = δ
+        self.optimize_initial_exploration = optimize_initial_exploration
+        self.LB = LB
         self.placement_count = self.k if self.read else self.n
         
         
@@ -109,7 +111,7 @@ class AW_CUCB:
             else:
                 latency = time.time() - start_time
                 latency_cloud[cloud_id] = latency
-                print(f'request to cloud cloud_id: {cloud_id}, res: {result}, used {latency} seconds')
+                logger.info(f'request to cloud cloud_id: {cloud_id}, res: {result}, used {latency} seconds')
         logger.info(f"{tick} requests ended at {time.strftime('%X')}")
         return latency_cloud
         
@@ -122,13 +124,29 @@ class AW_CUCB:
         latency_cloud_timed = np.zeros((self.ticks, self.N))
         U = np.zeros((self.ticks, self.N))
         L = np.zeros((self.ticks, self.N))
+        initial_optimized_placement_policy = list(itertools.combinations(range(self.N), self.placement_count))
         for tick in range(self.ticks):
-            if tick < self.N:
+            # optimize the initial exploration logic
+            # change the placement policy choice which include the current tick indexed provider
+            # and (placement_count - 1) providers from other randomly
+            # to the combinations(N, placement_count) providers
+            # Use the itertools.combinations to generate the combinations
+            # initial_placement_policy is a list of tuple which contains the placement policy
+            if self.optimize_initial_exploration and tick < len(initial_optimized_placement_policy):
+                placement_policy = initial_optimized_placement_policy[tick]
+                placement_policy_timed[tick] = [1 if i in placement_policy else 0 for i in range(self.N)]
+                # make a request to the cloud and save the latency to the latency_cloud_timed
+                # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
+                logger.info(f"placement_policy_timed[{tick}]: {placement_policy_timed[tick]}")
+                latency_cloud = asyncio.run(self.get_latency(placement_policy_timed[tick], tick))
+                logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
+                latency_cloud_timed[tick] = latency_cloud
+            elif tick < self.N:
                 # randomly choose a super arm, the tick position is chosed
-                placement_policy_index = list(range(self.N))
-                placement_policy_index.pop(tick)
-                placement_policy_index = random.choices(placement_policy_index, k=self.placement_count - 1) + [tick]
-                placement_policy_timed[tick] = [1 if i in placement_policy_index else 0 for i in range(self.N)]
+                placement_policy = list(range(self.N))
+                placement_policy.pop(tick)
+                placement_policy = random.choices(placement_policy, k=self.placement_count - 1) + [tick]
+                placement_policy_timed[tick] = [1 if i in placement_policy else 0 for i in range(self.N)]
                 # make a request to the cloud and save the latency to the latency_cloud_timed
                 # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
                 latency_cloud = asyncio.run(self.get_latency(placement_policy_timed[tick], tick))
@@ -146,14 +164,16 @@ class AW_CUCB:
                     latency_of_cloud_previous_ticks = latency_cloud_timed[:tick,clould_id]
                     liwi[clould_id] = 1 / Tiwi[clould_id] * np.sum(latency_of_cloud_previous_ticks)
                     if np.size(np.where(latency_of_cloud_previous_ticks != 0)) > 0:
-                        LB = latency_of_cloud_previous_ticks.max() - np.delete(latency_of_cloud_previous_ticks, np.where(latency_of_cloud_previous_ticks == 0)).min()
+                        LB = latency_of_cloud_previous_ticks.max() - np.delete(latency_of_cloud_previous_ticks, np.where(latency_of_cloud_previous_ticks == 0)).min() if self.LB == None else self.LB
                         eit[clould_id] = LB * math.sqrt(self.ξ * math.log(window_sizes[clould_id], 10) / Tiwi[clould_id])
                     else:
-                        # TODO: what is the value of eit when latency_of_cloud_previous_ticks is all 0
-                        eit[clould_id] = 0
+                        # should not go here!
+                        logger.error(f"program logic error, check the code!")
+                        sys.exit(-1)
                 # estimate the utility bound of each cloud
                 u_hat_it[:] = self.ψ1 * liwi + self.ψ2 * np.array(storage_cost) - eit
-                placement_policy = np.argsort(u_hat_it)[::-1][:self.placement_count]
+                # select the top n arms to added into the placement policy in ascending order
+                placement_policy = np.argsort(u_hat_it)[:self.placement_count]
                 placement_policy_timed[tick] = [1 if i in placement_policy else 0 for i in range(self.N)]
                 latency_cloud_timed[tick] = asyncio.run(self.get_latency(placement_policy_timed[tick], tick))
                 # play super arm St and observe the latency
@@ -166,7 +186,7 @@ class AW_CUCB:
                         pass
                     # TODO: verify correct? contains 0? ERROR!
                     # https://www.geeksforgeeks.org/numpy-minimum-in-python/
-                    # window_sizes = np.minimum(τ, tick - τ + 1)
+                window_sizes = np.minimum(window_sizes, tick - τ + 1)
                 print(f"tick: {tick}, u_hat_it: {u_hat_it}, window_sizes: {window_sizes}")
                 
     def FM_PHT(self, U, L, tick, latency_cloud_timed):
