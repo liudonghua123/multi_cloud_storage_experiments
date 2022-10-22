@@ -13,38 +13,37 @@ from common.config_logging import init_logging
 logger = init_logging(join(dirname(realpath(__file__)), "common.log"))
 
 
+async def do_request(cloud_id, k, cloud_providers, data_size, read) -> list:
+    # make a request to cloud provider
+    result = 'success'
+    try:
+        size = int(data_size / k)
+        if read:
+            url = f"{cloud_providers[cloud_id]}/get?size={size}"
+            logger.info(f"make read request url: {url}")
+            response = requests.get(url, timeout=10)
+            if response.status_code != 200:
+                result = 'fail'
+        else:
+            url = f"{cloud_providers[cloud_id]}/put?size={size}"
+            logger.info(f"make read request url: {url}")
+            response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
+            if response.status_code != 200:
+                result = 'fail'
+    except Timeout:
+        logger.error(f'The request {url} timed out')
+        result = 'timeout'
+    except ConnectionError as e:
+        logger.error(f'The request {url} connection_error!')
+        result = 'connection_error'
+    except:
+        logger.error(f'The request {url} error!')
+        result = 'error'
+    return cloud_id, result
+
 async def get_latency(clould_placements, tick, N, k, cloud_providers, data_size, read):
-    
-    async def do_request(cloud_id) -> list:
-        # make a request to cloud provider
-        result = 'success'
-        try:
-            size = int(data_size / k)
-            if read:
-                url = f"{cloud_providers[cloud_id]}/get?size={size}"
-                logger.info(f"make read request url: {url}")
-                response = requests.get(url, timeout=10)
-                if response.status_code != 200:
-                    result = 'fail'
-            else:
-                url = f"{cloud_providers[cloud_id]}/put?size={size}"
-                logger.info(f"make read request url: {url}")
-                response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
-                if response.status_code != 200:
-                    result = 'fail'
-        except Timeout:
-            logger.error(f'The request {url} timed out')
-            result = 'timeout'
-        except ConnectionError as e:
-            logger.error(f'The request {url} connection_error!')
-            result = 'connection_error'
-        except:
-            logger.error(f'The request {url} error!')
-            result = 'error'
-        return cloud_id, result
-    
     # make a parallel request to cloud providers which is enabled in clould_placements
-    request_tasks = [asyncio.create_task(do_request(cloud_id)) for cloud_id, enabled in enumerate(clould_placements) if enabled == 1]
+    request_tasks = [asyncio.create_task(do_request(cloud_id, k, cloud_providers, data_size, read)) for cloud_id, enabled in enumerate(clould_placements) if enabled == 1]
     logger.info(f"{tick} requests started at {time.strftime('%X')}")
     start_time = time.time()
     latency_cloud = np.zeros((N, ))
