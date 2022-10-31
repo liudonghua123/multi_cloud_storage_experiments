@@ -13,19 +13,18 @@ from common.config_logging import init_logging
 logger = init_logging(join(dirname(realpath(__file__)), "common.log"))
 
 
-async def do_request(cloud_id, k, cloud_providers, data_size, read) -> list:
+async def do_request(cloud_base_url, cloud_id, size, read) -> list:
     # make a request to cloud provider
     result = 'success'
     try:
-        size = int(data_size / k)
         if read:
-            url = f"{cloud_providers[cloud_id]}/get?size={size}"
+            url = f"{cloud_base_url}/get?size={size}"
             logger.info(f"make read request url: {url}")
             response = requests.get(url, timeout=10)
             if response.status_code != 200:
                 result = 'fail'
         else:
-            url = f"{cloud_providers[cloud_id]}/put?size={size}"
+            url = f"{cloud_base_url}/put?size={size}"
             logger.info(f"make read request url: {url}")
             response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
             if response.status_code != 200:
@@ -43,7 +42,7 @@ async def do_request(cloud_id, k, cloud_providers, data_size, read) -> list:
 
 async def get_latency(clould_placements, tick, N, k, cloud_providers, data_size, read):
     # make a parallel request to cloud providers which is enabled in clould_placements
-    request_tasks = [asyncio.create_task(do_request(cloud_id, k, cloud_providers, data_size, read)) for cloud_id, enabled in enumerate(clould_placements) if enabled == 1]
+    request_tasks = [asyncio.create_task(do_request(cloud_providers[cloud_id], cloud_id, int(data_size / k), read)) for cloud_id, enabled in enumerate(clould_placements) if enabled == 1]
     logger.info(f"{tick} requests started at {time.strftime('%X')}")
     start_time = time.time()
     latency_cloud = np.zeros((N, ))
