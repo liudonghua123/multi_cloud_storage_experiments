@@ -16,3 +16,21 @@ cloud_providers:
   - http://127.0.0.1:8080
   - http://127.0.0.1:8080
   - http://127.0.0.1:8080
+
+# 测试矩阵，cloud_placements * data_size * read
+network_test:
+  matrix:
+    cloud_placements:
+      - [1,0,1,0,0,0]
+    data_sizes:
+      - 1024
+      - 2048
+    reads:
+      - true
+      - false
+  start_datetime: 2022-11-01 01:00:00
+  end_datetime: 2022-11-01 01:05:00
+  interval: 10
+  N: 6
+  k: 3
+  n: 2
