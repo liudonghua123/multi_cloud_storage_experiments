@@ -25,3 +25,10 @@ The client of adaptive data placement in multi-cloud storage.
 - https://numpy.org/doc/stable/reference/generated/numpy.nanargmax.html
 - https://datascienceparichay.com/article/sort-numpy-array-in-descending-order/
 - https://www.nickmccullum.com/advanced-python/numpy-indexing-assignment/
+- https://pyneng.readthedocs.io/en/latest/book/19_concurrent_connections/concurrent_futures_submit.html
+- https://realpython.com/intro-to-python-threading/#join-a-thread
+- https://coderslegacy.com/python/get-return-value-from-thread/
+- https://www.delftstack.com/howto/python/python-pool-map-multiple-arguments/
+- https://python-tutorials.in/python-asyncio-gather/
+- https://hackernoon.com/how-to-run-asynchronous-web-requests-in-parallel-with-python-3-5-without-aiohttp-264dc0f8546
+
