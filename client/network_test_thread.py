@@ -17,14 +17,15 @@ import snoop
 import asyncio
 import requests
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor, as_completed
 # import datetime
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from requests.exceptions import Timeout, ConnectionError
 
 # In order to run this script directly, you need to add the parent directory to the sys.path
 # Or you need to run this script in the parent directory using the command: python -m client.algorithm
 sys.path.append(dirname(realpath(".")))
-from common.utility import get_latency
+from common.utility import get_latency, get_latency_sync
 from common.config_logging import init_logging
 
 logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
@@ -67,7 +68,7 @@ class NetworkTest:
         self.k = k
         self.n = n
 
-    async def run(self):
+    def run(self):
         # get the current datetime
         initial_datetime = datetime.now()
         # create a dataframe to store the results
@@ -83,21 +84,24 @@ class NetworkTest:
         while datetime.now() < self.start_datetime:
             logger.info(f"wait for the start datetime: {self.start_datetime}")
             # sleep for 1 second for reaching the start datetime accurately
-            await asyncio.sleep(1)   
+            time.sleep(1)   
         # name csv file suffix with some configurations and current timestamp
         csv_file_path = join(dirname(realpath(__file__)), f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%d_%m_%H_%M_%S')}.csv")
         csv_saved_count = 1
+        tick_count = 1
         # start the test until the end datetime
         while datetime.now() < self.end_datetime:
             tick = datetime.now()
             logger.info(f"tick: {tick}")
-            latency_cloud = await get_latency(self.clould_placement, tick, self.N, self.k, cloud_providers, self.data_size, self.read)
+            latency_cloud = get_latency_sync(self.clould_placement, tick, self.N, self.k, cloud_providers, self.data_size, self.read)
             logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} latency_cloud: {latency_cloud}")
             # save the result to df
             df.loc[len(df.index)] = latency_cloud
             # logging the last 5 rows of df
             logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} last 5 rows of df: \n{df.iloc[-5:]}")
-            await asyncio.sleep(self.interval)
+            # sleep for the next tick
+            while datetime.now() < tick + timedelta(seconds=self.interval):
+                time.sleep(1)
             # save the df to csv file every intermediate_save_seconds in another thread
             if (datetime.now() - start_datetime).seconds >= csv_saved_count * intermediate_save_seconds:
                 def _save_csv(df):
@@ -114,7 +118,7 @@ class NetworkTest:
         return df
 
 
-async def run_test():
+def run_test():
     # create a list of NetworkTest based on the test matrix
     network_tests: list[NetworkTest] = []
     for cloud_placement in cloud_placements:
@@ -122,23 +126,15 @@ async def run_test():
             for read in reads:
                 network_tests.append(NetworkTest(start_datetime, end_datetime, interval, read, N, cloud_placement, data_size, k, n))
     logger.info(f'create {len(network_tests)} NetworkTest instances')
-    test_tasks = [asyncio.create_task(network_test.run()) for network_test in network_tests]
     logger.info(f"test tasks started at {time.strftime('%X')}")
-    # results = await asyncio.gather(*test_tasks)
     results = []
-    for task in asyncio.as_completed(test_tasks):
-        logger.info(f"before await task")
-        result = await task
-        logger.info(f"after await task, result: {result}")
-        results.append(result)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_list = [executor.submit(network_test.run) for network_test in network_tests]
+        for f in as_completed(future_list):
+            results.append(f.result())
     # logger.info(f'test tasks results: {results}')
     logger.info(f"test tasks ended at {time.strftime('%X')}")
 
 if __name__ == "__main__":
-    # test the initial test matrix
-    # network_test = NetworkTest(start_datetime, end_datetime, interval, reads[0], N, cloud_placements[0], data_sizes[0], k, n)
-    # asyncio.run(network_test.run())
-    
-    # run the test matrix parallelly
-    asyncio.run(run_test())
+    run_test()
     
