@@ -2,3 +2,6 @@ pyyaml
 requests
 httpx
 schedule
+numpy
+pandas
+matplotlib
