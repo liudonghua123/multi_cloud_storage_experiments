@@ -48,6 +48,7 @@ async def get_latency(clould_placements, tick, N, k, cloud_providers, data_size,
     latency_cloud = np.zeros((N, ))
     for task in asyncio.as_completed(request_tasks):
         cloud_id, result = await task
+        logger.info(f'cloud_id: {cloud_id} got response!')
         if result != 'success':
             logger.error(f"request to cloud {cloud_id} failed")
         else:

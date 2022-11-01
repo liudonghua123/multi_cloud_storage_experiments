@@ -92,11 +92,11 @@ class NetworkTest:
             tick = datetime.now()
             logger.info(f"tick: {tick}")
             latency_cloud = await get_latency(self.clould_placement, tick, self.N, self.k, cloud_providers, self.data_size, self.read)
-            logger.info(f"latency_cloud: {latency_cloud}")
+            logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} latency_cloud: {latency_cloud}")
             # save the result to df
             df.loc[len(df.index)] =[tick, *latency_cloud]
             # logging the last 5 rows of df
-            logger.info(f'last 5 rows of df: \n{df.iloc[-5:]}')
+            logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} last 5 rows of df: \n{df.iloc[-5:]}")
             await asyncio.sleep(self.interval)
             # save the df to csv file every intermediate_save_seconds in another thread
             if (datetime.now() - start_datetime).seconds >= csv_saved_count * intermediate_save_seconds:
