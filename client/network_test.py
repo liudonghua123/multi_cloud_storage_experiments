@@ -16,6 +16,7 @@ import random
 import snoop
 import asyncio
 import requests
+from threading import Thread
 # import datetime
 from datetime import datetime, date
 from requests.exceptions import Timeout, ConnectionError
@@ -50,6 +51,7 @@ interval: int = config["network_test"]["interval"]
 N: int = config["network_test"]["N"]
 k: int = config["network_test"]["k"]
 n: int = config["network_test"]["n"]
+intermediate_save_seconds: int = config["network_test"]["intermediate_save_seconds"]
 
 class NetworkTest:
     def __init__(
@@ -80,7 +82,11 @@ class NetworkTest:
         # wait for the start datetime
         while datetime.now() < self.start_datetime:
             logger.info(f"wait for the start datetime: {self.start_datetime}")
-            await asyncio.sleep(self.interval / 2)
+            # sleep for 1 second for reaching the start datetime accurately
+            await asyncio.sleep(1)   
+        # name csv file suffix with some configurations and current timestamp
+        csv_file_path = join(dirname(realpath(__file__)), f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%d_%m_%H_%M_%S')}.csv")
+        csv_saved_count = 1
         # start the test until the end datetime
         while datetime.now() < self.end_datetime:
             tick = datetime.now()
@@ -92,9 +98,17 @@ class NetworkTest:
             # logging the last 5 rows of df
             logger.info(f'last 5 rows of df: \n{df.iloc[-5:]}')
             await asyncio.sleep(self.interval)
-        # save the result to csv file suffix with the current timestamp
-        csv_file_path = join(dirname(realpath(__file__)), f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%d_%m_%H_%M_%S')}.csv")
-        logger.info(f'prepare to save the result to csv file: {csv_file_path}')
+            # save the df to csv file every intermediate_save_seconds in another thread
+            if (datetime.now() - start_datetime).seconds >= csv_saved_count * intermediate_save_seconds:
+                def _save_csv(df):
+                    logger.info(f"prepare to save df to csv file intermediately: {csv_file_path}")
+                    df.to_csv(csv_file_path, index=False)
+                    logger.info(f"saved df to csv file: {csv_file_path}")
+                t = Thread(target = _save_csv, args =(df, ))
+                t.start() 
+                csv_saved_count += 1
+        # save the df to csv file, overwrite the previous one
+        logger.info(f'prepare to save the result to csv file finally: {csv_file_path}')
         df.to_csv(csv_file_path, index=False)
         logger.info(f'save the result to csv file successfully')
         return df
@@ -111,7 +125,7 @@ async def run_test():
     test_tasks = [asyncio.create_task(network_test.run()) for network_test in network_tests]
     logger.info(f"test tasks started at {time.strftime('%X')}")
     results = await asyncio.gather(*test_tasks)
-    logger.info(f'test tasks results: {results}')
+    # logger.info(f'test tasks results: {results}')
     logger.info(f"test tasks ended at {time.strftime('%X')}")
 
 if __name__ == "__main__":

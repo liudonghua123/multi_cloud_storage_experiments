@@ -28,9 +28,10 @@ network_test:
     reads:
       - true
       - false
-  start_datetime: 2022-11-01 01:00:00
-  end_datetime: 2022-11-01 01:05:00
+  start_datetime: 2022-11-01 10:14:00
+  end_datetime: 2022-11-01 10:16:00
   interval: 10
   N: 6
   k: 3
   n: 2
+  intermediate_save_seconds: 60
