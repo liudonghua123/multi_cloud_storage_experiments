@@ -25,7 +25,7 @@ async def do_request(cloud_base_url, cloud_id, size, read) -> list:
                 result = 'fail'
         else:
             url = f"{cloud_base_url}/put?size={size}"
-            logger.info(f"make read request url: {url}")
+            logger.info(f"make write request url: {url}")
             response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
             if response.status_code != 200:
                 result = 'fail'
