@@ -177,7 +177,7 @@ def main(
     network_test_aggregated_results_csv_file_path (str): the csv file path of network test aggregated results.
     cloud_ids (str): the cloud ids to visualize, separated by comma.
     aggregations (str): the aggregations to visualize, separated by comma.
-    legend_loc (str): the location of legend, see https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html for more details.
+    legend_loc (str): the location of legend, see https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html for more details.
 
     Returns:
     0: if success
