@@ -101,7 +101,7 @@ class NetworkTest:
             logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} last 5 rows of df: \n{df.iloc[-5:]}")
             # sleep for the next tick
             while datetime.now() < tick + timedelta(seconds=self.interval):
-                time.sleep(1)
+                time.sleep(0.1)
             # save the df to csv file every intermediate_save_seconds in another thread
             if (datetime.now() - start_datetime).seconds >= csv_saved_count * intermediate_save_seconds:
                 def _save_csv(df):

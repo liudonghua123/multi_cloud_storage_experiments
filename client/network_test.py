@@ -18,7 +18,7 @@ import asyncio
 import requests
 from threading import Thread
 # import datetime
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from requests.exceptions import Timeout, ConnectionError
 
 # In order to run this script directly, you need to add the parent directory to the sys.path
@@ -97,7 +97,8 @@ class NetworkTest:
             df.loc[len(df.index)] = latency_cloud
             # logging the last 5 rows of df
             logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} last 5 rows of df: \n{df.iloc[-5:]}")
-            await asyncio.sleep(self.interval)
+            while datetime.now() < tick + timedelta(seconds=self.interval):
+                await asyncio.sleep(0.1)
             # save the df to csv file every intermediate_save_seconds in another thread
             if (datetime.now() - start_datetime).seconds >= csv_saved_count * intermediate_save_seconds:
                 def _save_csv(df):
