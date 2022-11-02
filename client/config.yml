@@ -35,3 +35,10 @@ network_test:
   k: 3
   n: 2
   intermediate_save_seconds: 60
+
+# 测试可视化
+network_test_visualization:
+  # 分组粒度，单位秒
+  group_size: 300
+  # 计算的百分位数值
+  percentage_values: [50, 99]
