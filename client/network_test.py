@@ -85,14 +85,14 @@ class NetworkTest:
             # sleep for 1 second for reaching the start datetime accurately
             await asyncio.sleep(1)   
         # name csv file suffix with some configurations and current timestamp
-        csv_file_path = join(dirname(realpath(__file__)), f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%d_%m_%H_%M_%S')}.csv")
+        csv_file_path = join(dirname(realpath(__file__)), f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%m_%d_%H_%M_%S')}.csv")
         csv_saved_count = 1
         # start the test until the end datetime
         while datetime.now() < self.end_datetime:
             tick = datetime.now()
-            logger.info(f"tick: {tick}")
+            logger.info(f"invoke get_latency_sync with placements: {self.clould_placement}, datasize: {self.data_size}, {'read' if self.read else 'write'}")
             latency_cloud = await get_latency(self.clould_placement, tick, self.N, self.k, cloud_providers, self.data_size, self.read)
-            logger.info(f"datasize of {self.data_size} {'read' if self.read else 'write'} latency_cloud: {latency_cloud}")
+            logger.info(f"finished invoke get_latency_sync with placements: {self.clould_placement}, datasize: {self.data_size}, {'read' if self.read else 'write'}")
             # save the result to df
             df.loc[len(df.index)] = latency_cloud
             # logging the last 5 rows of df
@@ -124,17 +124,16 @@ async def run_test():
                 network_tests.append(NetworkTest(start_datetime, end_datetime, interval, read, N, cloud_placement, data_size, k, n))
     logger.info(f'create {len(network_tests)} NetworkTest instances')
     test_tasks = [asyncio.create_task(network_test.run()) for network_test in network_tests]
-    logger.info(f"test tasks started at {time.strftime('%X')}")
+    logger.info(f"run_test started")
     # results = await asyncio.gather(*test_tasks)
     results = []
     for task in asyncio.as_completed(test_tasks):
-        logger.info(f"before await task")
+        logger.debug(f"before await task")
         result = await task
-        logger.info(f"after await task, result: {result}")
+        logger.debug(f"after await task, result: {result}")
         results.append(result)
-    # logger.info(f'test tasks results: {results}')
-    logger.info(f"test tasks ended at {time.strftime('%X')}")
-
+    logger.info(f'run_test results: {results}')
+    
 if __name__ == "__main__":
     # test the initial test matrix
     # network_test = NetworkTest(start_datetime, end_datetime, interval, reads[0], N, cloud_placements[0], data_sizes[0], k, n)

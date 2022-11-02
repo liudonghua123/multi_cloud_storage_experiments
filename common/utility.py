@@ -25,18 +25,18 @@ async def do_request(cloud_base_url, cloud_id, size, read) -> list:
         latency = 0
         if read:
             url = f"{cloud_base_url}/get?size={size}"
-            logger.info(f"cloud_id: {cloud_id} make read request url: {url}")
+            logger.debug(f"do_request {url} make read request url: {url}")
             response = requests.get(url, timeout=10)
             latency = time.time() - start_time
-            logger.info(f"cloud_id: {cloud_id} got read response for url: {url}")
+            logger.debug(f"do_request {url} got read response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
         else:
             url = f"{cloud_base_url}/put?size={size}"
-            logger.info(f"cloud_id: {cloud_id} make write request url: {url}")
+            logger.debug(f"do_request {url} make write request url: {url}")
             response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
             latency = time.time() - start_time
-            logger.info(f"cloud_id: {cloud_id} got write response for url: {url}")
+            logger.debug(f"do_request {url} got write response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
     except Timeout:
@@ -48,28 +48,27 @@ async def do_request(cloud_base_url, cloud_id, size, read) -> list:
     except:
         logger.error(f'The request {url} error!')
         result = 'error'
-    logger.info(f"do_request: {url} return result: {result}")
     return cloud_id, latency, result, start_datetime
 
 async def get_latency(clould_placements, tick, N, k, cloud_providers, data_size, read):
     # make a parallel request to cloud providers which is enabled in clould_placements
     request_tasks = [do_request(cloud_providers[cloud_id], cloud_id, int(data_size / k), read) for cloud_id, enabled in enumerate(clould_placements) if enabled == 1]
-    logger.info(f"{tick} requests started at {time.strftime('%X')}")
+    logger.info(f"get_latency of {clould_placements}, {'read' if read else 'write'}, {data_size} started")
     latency_cloud = np.zeros((N, ))
     request_start_datetime = None
     for task in asyncio.as_completed(request_tasks):
-        logger.info(f"{tick} await task")
+        logger.debug(f"{tick} await task")
         cloud_id, latency, result, start_datetime = await task
+        logger.debug(f"{tick} await task returned")
+        # use the first request start time as the start time of the grouped requests
         if request_start_datetime is None:
             request_start_datetime = start_datetime
-        logger.info(f"{tick} await task returned")
-        logger.info(f'cloud_id: {cloud_id} got response!')
+        logger.info(f"do_request of {cloud_providers[cloud_id]}, {'read' if read else 'write'} {data_size} finished, used {latency} seconds")
         if result != 'success':
             logger.error(f"request to cloud {cloud_id} failed")
         else:
             latency_cloud[cloud_id] = latency
-            logger.info(f'request to cloud cloud_id: {cloud_id}, res: {result}, used {latency} seconds')
-    logger.info(f"{tick} requests ended at {time.strftime('%X')}")
+    logger.info(f"get_latency of {clould_placements}, {'read' if read else 'write'}, {data_size} finished")
     return [request_start_datetime, *latency_cloud]
 
 
@@ -82,18 +81,18 @@ def do_request_sync(cloud_base_url, cloud_id, size, read) -> list:
         latency = 0
         if read:
             url = f"{cloud_base_url}/get?size={size}"
-            logger.info(f"cloud_id: {cloud_id} make read request url: {url}")
+            logger.debug(f"do_request_sync {url} make read request url: {url}")
             response = requests.get(url, timeout=10)
             latency = time.time() - start_time
-            logger.info(f"cloud_id: {cloud_id} got read response for url: {url}")
+            logger.debug(f"do_request_sync {url} got read response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
         else:
             url = f"{cloud_base_url}/put?size={size}"
-            logger.info(f"cloud_id: {cloud_id} make write request url: {url}")
+            logger.debug(f"do_request_sync {url} make write request url: {url}")
             response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
             latency = time.time() - start_time
-            logger.info(f"cloud_id: {cloud_id} got write response for url: {url}")
+            logger.debug(f"do_request_sync {url} got write response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
     except Timeout:
@@ -105,12 +104,11 @@ def do_request_sync(cloud_base_url, cloud_id, size, read) -> list:
     except:
         logger.error(f'The request {url} error!')
         result = 'error'
-    logger.info(f"do_request: {url} return result: {result}")
     return cloud_id, latency, result, start_datetime
 
 def get_latency_sync(clould_placements, tick, N, k, cloud_providers, data_size, read):
     # make a parallel request to cloud providers which is enabled in clould_placements
-    logger.info(f"{tick} requests started at {time.strftime('%X')}")
+    logger.info(f"get_latency_sync of {clould_placements}, {'read' if read else 'write'}, {data_size} started")
     latency_cloud = np.zeros((N, ))
     request_start_datetime = None
     
@@ -120,10 +118,10 @@ def get_latency_sync(clould_placements, tick, N, k, cloud_providers, data_size, 
         for cloud_id, latency, result, start_datetime in return_values:
             if request_start_datetime is None:
                 request_start_datetime = start_datetime
+            logger.info(f"do_request_sync of {cloud_providers[cloud_id]}, {'read' if read else 'write'} {data_size} finished, used {latency} seconds")
             if result != 'success':
                 logger.error(f"request to cloud {cloud_id} failed")
             else:
                 latency_cloud[cloud_id] = latency
-                logger.info(f'request to cloud cloud_id: {cloud_id}, res: {result}, used {latency} seconds')
-    logger.info(f"{tick} requests ended at {time.strftime('%X')}")
+    logger.info(f"get_latency_sync of {clould_placements}, {'read' if read else 'write'}, {data_size} finished")
     return [request_start_datetime, *latency_cloud]
