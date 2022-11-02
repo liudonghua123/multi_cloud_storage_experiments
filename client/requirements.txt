@@ -5,3 +5,8 @@ schedule
 numpy
 pandas
 matplotlib
+# for debugging and tracing
+snoop
+# for cli parsing
+# https://google.github.io/python-fire/guide/
+fire
