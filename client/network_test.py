@@ -85,7 +85,7 @@ class NetworkTest:
             # sleep for 1 second for reaching the start datetime accurately
             await asyncio.sleep(1)   
         # name csv file suffix with some configurations and current timestamp
-        csv_file_path = join(dirname(realpath(__file__)), f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%m_%d_%H_%M_%S')}.csv")
+        csv_file_path = join(dirname(realpath(__file__)), "network_test_results", f"network_test_with_placements_{'_'.join(map(str, self.clould_placement))}_datasize_{self.data_size}_{'read' if self.read else 'write'}_start_at_{initial_datetime.strftime('%Y_%m_%d_%H_%M_%S')}.csv")
         csv_saved_count = 1
         # start the test until the end datetime
         while datetime.now() < self.end_datetime:
