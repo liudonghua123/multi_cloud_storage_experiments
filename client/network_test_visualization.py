@@ -20,8 +20,11 @@ import random
 import snoop
 import asyncio
 import requests
+import fire
+from os.path import exists
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from itertools import product
 
 # import datetime
 from datetime import datetime, date, timedelta
@@ -43,8 +46,6 @@ with open(
 ) as file:
     config = yaml.safe_load(file)
 
-logger.info(f"load config: {config}")
-
 # 分组粒度，单位秒
 group_size: int = config["network_test_visualization"]["group_size"]
 # 计算的百分位数值
@@ -59,7 +60,7 @@ def p99(x) -> float:
     return partial(np.percentile, q=99, method="nearest")(x)
 
 
-def calculation(input_file_path: str, output_identifier= '') -> DataFrame:
+def calculation(input_file_path: str, output_identifier="") -> DataFrame:
     df: DataFrame = pd.read_csv(input_file_path)
     # get the column names of the df
     cloud_ids: list[str] = df.columns.values[1:].tolist()
@@ -89,43 +90,133 @@ def calculation(input_file_path: str, output_identifier= '') -> DataFrame:
             [df_aggregated, df_aggregated_temp], ignore_index=True, axis=1
         )
 
-    print(f'df_aggregated.shape: {df_aggregated.shape}')
+    print(f"df_aggregated.shape: {df_aggregated.shape}")
     df_aggregated.columns = df_aggregated_columns
     # save the aggregated df to csv file
-    csv_file_path = join(dirname(realpath(__file__)), "network_test_results", f"network_test_aggregated_{output_identifier}_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.csv")
+    csv_file_path = join(
+        dirname(realpath(__file__)),
+        "network_test_results",
+        f"network_test_aggregated_{output_identifier}_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.csv",
+    )
+    # index of df_aggregated is timestamp_group here.
+    # DataFrame.to_csv default to save without index and with header, so no problem here.
     df_aggregated.to_csv(csv_file_path)
     return df_aggregated
 
-def simple_visualization_from_csv(input_csv_file: str):
-    df = pd.read_csv(input_csv_file)
-    simple_visualization_from_dataframe(df)
 
-def simple_visualization_from_dataframe(df: DataFrame):
-    x = list(map(lambda x: datetime.fromtimestamp(x).strftime('%Y_%m_%d_%H_%M_%S'), df.index))
-    plt.scatter(x, df['cloud_id_0_p99'], c ="green")
-    plt.scatter(x, df['cloud_id_0_p50'], c ="blue")
-    
-    plt.scatter(x, df['cloud_id_1_p99'], c ="red")
-    plt.scatter(x, df['cloud_id_1_p50'], c ="purple")
-    
-    plt.scatter(x, df['cloud_id_2_p99'], c ="black")
-    plt.scatter(x, df['cloud_id_2_p50'], c ="yellow")
-    
-    plt.scatter(x, df['cloud_id_3_p99'], c ="gray")
-    plt.scatter(x, df['cloud_id_3_p50'], c ="orange")
-    
-    plt.xlabel("timestamp")
-    plt.ylabel("latency/s")
-    plt.show()
+def simple_visualization_from_csv(
+    input_csv_file: str,
+    cloud_ids,
+    aggregations,
+    legend_loc,
+):
+    # read the aggregated csv file, default index_col is None for read_csv,
+    # and should specify the index_col to be timestamp_group
+    # or the df will not be the same structure as the one returned by calculation function.
+    # df.index is timestamp_group column now
+    df = pd.read_csv(input_csv_file, index_col="timestamp_group")
+    simple_visualization_from_dataframe(df, cloud_ids, aggregations, legend_loc)
 
-if __name__ == "__main__":
-    df = calculation(
-        join(
-            dirname(realpath(__file__)),
-            "network_test_results",
-            "network_test_with_placements_1_1_1_1_datasize_10485760_write_start_at_2022_02_11_00_25_15.csv",
+
+def simple_visualization_from_dataframe(
+    df: DataFrame,
+    cloud_ids,
+    aggregations,
+    legend_loc,
+):
+    print(f"df.shape: {df.shape}, cloud_ids: {cloud_ids}, aggregations: {aggregations}")
+    # df.index is timestamp_group column here
+    x = list(map(lambda x: datetime.fromtimestamp(x).strftime("%H_%M"), df.index))
+    # parse cloud_ids and aggregations
+    cloud_id_list_supported = set(map(lambda x: x[: x.rindex("_")], df.columns))
+    # the fire module will parse the string to list, so we do not need to parse it here
+    # cloud_ids = cloud_ids.split(",")
+    # aggregations = aggregations.split(",")
+    # check cloud_ids, should included in df.columns
+    if not set(cloud_ids) <= cloud_id_list_supported:
+        print(f"cloud_ids: {cloud_ids} should be included in df.columns: {df.columns}")
+        exit(-1)
+    # check aggregations, should be included in ['min', 'max', 'mean', 'p50', 'p99']
+    if not set(aggregations) <= set(["min", "max", "mean", "p50", "p99"]):
+        print(
+            f"aggregations: {aggregations} should be included in ['min', 'max', 'mean', 'p50', 'p99'], only these 5 aggregations are supported."
+        )
+        exit(-1)
+
+    # use plt.scatter to plot timestamp_group as X axis
+    # and the matrix data specified by cloud_ids and aggregations as Y axis
+    column_combinations = list(
+        map(
+            lambda item: f"{item[0]}_{item[1]}",
+            product(cloud_ids, aggregations),
         )
     )
-    simple_visualization_from_dataframe(df)
-    # simple_visualization_from_csv('network_test_results/network_test_aggregated__2022_11_02_16_29_28.csv')
-    # simple_visualization_from_csv('network_test_results/network_test_aggregated__2022_11_02_17_05_43.csv')
+    for column_combination in column_combinations:
+        plt.scatter(x, df[column_combination])
+    plt.xlabel("timestamp")
+    plt.ylabel("latency/s")
+    plt.legend(column_combinations, loc=legend_loc)
+    plt.show()
+
+
+def main(
+    network_test_results_csv_file_path: str = "network_test_results/network_test_with_placements_1_1_1_1_datasize_1024_read_start_at_2022_02_11_00_25_15.csv",
+    network_test_aggregated_results_csv_file_path: str = "network_test_results/network_test_aggregated__2022_11_02_17_20_40.csv",
+    cloud_ids: str = "cloud_id_0,cloud_id_1,cloud_id_2,cloud_id_3".split(","),
+    aggregations: str = "p50,p99".split(","),
+    legend_loc: str = "upper right",
+):
+    """
+    Visualize the network test aggregated results.
+
+    If network_test_aggregated_results_csv_file_path provided, then use the date of csv file to visualize.
+    Else, use the network_test_results_csv_file_path to calculate the aggregated results and visualize.
+
+    Parameters:
+    network_test_results_csv_file_path (str): the csv file path of network test results.
+    network_test_aggregated_results_csv_file_path (str): the csv file path of network test aggregated results.
+    cloud_ids (str): the cloud ids to visualize, separated by comma.
+    aggregations (str): the aggregations to visualize, separated by comma.
+    legend_loc (str): the location of legend, see https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html for more details.
+
+    Returns:
+    0: if success
+    -1: if failed
+
+    """
+    # use network_test_aggregated_results_csv_file_path priority
+    if network_test_aggregated_results_csv_file_path != None:
+        if not exists(network_test_aggregated_results_csv_file_path):
+            print(
+                f"network_test_aggregated_results_csv_file_path: {network_test_aggregated_results_csv_file_path} not exists"
+            )
+            print(
+                f"please check the network_test_aggregated_results_csv_file_path or use network_test_results_csv_file_path"
+            )
+            exit(-1)
+        simple_visualization_from_csv(
+            network_test_aggregated_results_csv_file_path,
+            cloud_ids,
+            aggregations,
+            legend_loc,
+        )
+        return 0
+    if network_test_results_csv_file_path == None:
+        print(
+            "Either network_test_results_csv_file_path or network_test_aggregated_results_csv_file_path should be specified"
+        )
+        exit(-1)
+    elif not exists(network_test_results_csv_file_path):
+        print(
+            f"network_test_results_csv_file_path: {network_test_results_csv_file_path} not exists"
+        )
+        exit(-1)
+    df = calculation(network_test_results_csv_file_path)
+    simple_visualization_from_dataframe(df, cloud_ids, aggregations, legend_loc)
+    return 0
+
+
+if __name__ == "__main__":
+    # Make Python Fire not use a pager when it prints a help text
+    fire.core.Display = lambda lines, out: print(*lines, file=out)
+    fire.Fire(main)
