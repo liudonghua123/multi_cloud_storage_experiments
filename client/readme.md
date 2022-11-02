@@ -63,7 +63,7 @@ FLAGS
     --legend_loc=LEGEND_LOC
         Type: str
         Default: 'upper right'
-        the location of legend, see https://matplotlib.org/3.1.1/api/_as_gen/matplotlib.pyplot.legend.html for more details.        
+        the location of legend, see https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html for more details.        
 
 D:\code\python\multi_cloud_storage_experiments\client
 ```
