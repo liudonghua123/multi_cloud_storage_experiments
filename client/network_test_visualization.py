@@ -51,6 +51,10 @@ group_size: int = config["network_test_visualization"]["group_size"]
 # 计算的百分位数值
 percentage_values: list[int] = config["network_test_visualization"]["percentage_values"]
 
+# 美化图表，使用 seaborn styles
+# MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
+plt.style.use('seaborn')
+# plt.style.use('seaborn-whitegrid')
 
 def p50(x) -> float:
     return partial(np.percentile, q=50, method="nearest")(x)
