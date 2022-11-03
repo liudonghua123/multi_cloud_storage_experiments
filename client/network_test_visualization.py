@@ -50,6 +50,10 @@ with open(
 group_size: int = config["network_test_visualization"]["group_size"]
 # 计算的百分位数值
 percentage_values: list[int] = config["network_test_visualization"]["percentage_values"]
+# x轴刻度数量，即x轴上的刻度点数量，由于x轴是时间很长，显示效果不理想，所以需要缩小x轴的刻度点数量
+# 使用 range(start_timestamp, end_timestamp, step) 来生成x轴刻度点
+# step=int(timestamp_size / xtick_size), 并且需要接近于 group_size 的整数倍
+xtick_size: int = config["network_test_visualization"]["xtick_size"]
 
 # 美化图表，使用 seaborn styles
 # MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
@@ -135,7 +139,8 @@ def simple_visualization_from_dataframe(
 ):
     logger.info(f"df.shape: {df.shape}, cloud_ids: {cloud_ids}, aggregations: {aggregations}")
     # df.index is timestamp_group column here
-    x = list(map(lambda x: datetime.fromtimestamp(x).strftime("%H_%M"), df.index))
+    # x = list(map(lambda x: datetime.fromtimestamp(x).strftime("%H_%M"), df.index))
+    x = df.index.tolist()
     # parse cloud_ids and aggregations
     cloud_id_list_supported = set(map(lambda x: x[: x.rindex("_")], df.columns))
     # the fire module will parse the string to list, so we do not need to parse it here
@@ -160,11 +165,25 @@ def simple_visualization_from_dataframe(
             product(cloud_ids, aggregations),
         )
     )
+    # Create subplot
+    fig, ax = plt.subplots()
+    fig.suptitle('network_test_visualization', fontweight ="bold")
     for column_combination in column_combinations:
-        plt.scatter(x, df[column_combination] * 1000)
-    plt.xlabel("timestamp")
-    plt.ylabel("latency/ms")
-    plt.legend(column_combinations, loc=legend_loc)
+        ax.scatter(x, df[column_combination] * 1000)
+    ax.set_xlabel("timestamp")
+    ax.set_ylabel("latency/ms")
+    step = int((x[-1] - x[0]) / xtick_size)
+    logger.debug(f"x[0]: {x[0]}, x[-1]: {x[-1]}, step: {step}")
+    step = int(step / group_size) * group_size
+    logger.debug(f"corrective step: {step}")
+    x_pos = np.arange(x[0], x[-1], step)
+    logger.debug(f"xtick_size: {xtick_size}, len(x_pos): {len(x_pos)}, x_pos: {x_pos}")
+    x_pos_label = list(map(lambda x: datetime.fromtimestamp(x).strftime("%y-%m-%d %H:%M"), x_pos))
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels(x_pos_label)
+    # ax.set_xticklabels(x_pos_label, rotation=45, ha='right')
+    fig.autofmt_xdate(rotation=45)
+    ax.legend(column_combinations, loc=legend_loc)
     plt.show()
 
 

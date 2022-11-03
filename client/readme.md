@@ -102,3 +102,8 @@ D:\code\python\multi_cloud_storage_experiments\client
 - https://github.com/google/python-fire/issues/188#issuecomment-1165098568
 - https://www.geeksforgeeks.org/python-docstrings/
 - https://matplotlib.org/stable/gallery/lines_bars_and_markers/scatter_with_legend.html
+- https://pythonguides.com/matplotlib-set_xticklabels/
+- https://www.delftstack.com/zh/howto/matplotlib/how-to-rotate-x-axis-tick-label-text-in-matplotlib/
+- https://jakevdp.github.io/PythonDataScienceHandbook/04.03-errorbars.html
+- https://www.askpython.com/python/examples/error-bars-in-python
+

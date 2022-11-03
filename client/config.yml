@@ -42,3 +42,5 @@ network_test_visualization:
   group_size: 300
   # 计算的百分位数值
   percentage_values: [50, 99]
+  # x轴刻度数量
+  xtick_size: 20
