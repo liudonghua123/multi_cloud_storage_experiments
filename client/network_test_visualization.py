@@ -56,6 +56,10 @@ def p50(x) -> float:
     return partial(np.percentile, q=50, method="nearest")(x)
 
 
+def p90(x) -> float:
+    return partial(np.percentile, q=90, method="nearest")(x)
+
+
 def p99(x) -> float:
     return partial(np.percentile, q=99, method="nearest")(x)
 
@@ -77,13 +81,13 @@ def calculation(input_file_path: str, output_identifier="") -> DataFrame:
     df_timestamp_group: DataFrameGroupBy = df.groupby("timestamp_group")
     # calculate the aggregated df
     df_aggregated = df_timestamp_group.agg(
-        {cloud_ids[0]: ["min", "max", "mean", p50, p99]}
+        {cloud_ids[0]: ["min", "max", "mean", p50, p90, p99]}
     )
     # rename the multiindex columns to plain columns
     df_aggregated_columns = list(map("_".join, df_aggregated.columns))
     for cloud_id in cloud_ids[1:]:
         df_aggregated_temp = df_timestamp_group.agg(
-            {cloud_id: ["min", "max", "mean", p50, p99]}
+            {cloud_id: ["min", "max", "mean", p50, p90, p99]}
         )
         df_aggregated_columns += list(map("_".join, df_aggregated_temp.columns))
         df_aggregated = pd.concat(
@@ -99,7 +103,8 @@ def calculation(input_file_path: str, output_identifier="") -> DataFrame:
         f"network_test_aggregated_{output_identifier}_{datetime.now().strftime('%Y_%m_%d_%H_%M_%S')}.csv",
     )
     # index of df_aggregated is timestamp_group here.
-    # DataFrame.to_csv default to save without index and with header, so no problem here.
+    # DataFrame.to_csv default to save with index and with header, so no problem here.
+    logger.info(f'write df_aggregated to csv file {csv_file_path}')
     df_aggregated.to_csv(csv_file_path)
     return df_aggregated
 
@@ -124,7 +129,7 @@ def simple_visualization_from_dataframe(
     aggregations,
     legend_loc,
 ):
-    print(f"df.shape: {df.shape}, cloud_ids: {cloud_ids}, aggregations: {aggregations}")
+    logger.info(f"df.shape: {df.shape}, cloud_ids: {cloud_ids}, aggregations: {aggregations}")
     # df.index is timestamp_group column here
     x = list(map(lambda x: datetime.fromtimestamp(x).strftime("%H_%M"), df.index))
     # parse cloud_ids and aggregations
@@ -136,10 +141,10 @@ def simple_visualization_from_dataframe(
     if not set(cloud_ids) <= cloud_id_list_supported:
         print(f"cloud_ids: {cloud_ids} should be included in df.columns: {df.columns}")
         exit(-1)
-    # check aggregations, should be included in ['min', 'max', 'mean', 'p50', 'p99']
-    if not set(aggregations) <= set(["min", "max", "mean", "p50", "p99"]):
+    # check aggregations, should be included in ['min', 'max', 'mean', 'p50', 'p90', 'p99']
+    if not set(aggregations) <= set(["min", "max", "mean", "p50", "p90", "p99"]):
         print(
-            f"aggregations: {aggregations} should be included in ['min', 'max', 'mean', 'p50', 'p99'], only these 5 aggregations are supported."
+            f"aggregations: {aggregations} should be included in ['min', 'max', 'mean', 'p50', 'p90', 'p99'], only these aggregations are supported."
         )
         exit(-1)
 
@@ -152,16 +157,16 @@ def simple_visualization_from_dataframe(
         )
     )
     for column_combination in column_combinations:
-        plt.scatter(x, df[column_combination])
+        plt.scatter(x, df[column_combination] * 1000)
     plt.xlabel("timestamp")
-    plt.ylabel("latency/s")
+    plt.ylabel("latency/ms")
     plt.legend(column_combinations, loc=legend_loc)
     plt.show()
 
 
 def main(
-    network_test_results_csv_file_path: str = "network_test_results/network_test_with_placements_1_1_1_1_datasize_1024_read_start_at_2022_02_11_00_25_15.csv",
-    network_test_aggregated_results_csv_file_path: str = "network_test_results/network_test_aggregated__2022_11_02_17_20_40.csv",
+    network_test_results_csv_file_path: str = None,
+    network_test_aggregated_results_csv_file_path: str = None,
     cloud_ids: str = "cloud_id_0,cloud_id_1,cloud_id_2,cloud_id_3".split(","),
     aggregations: str = "p50,p99".split(","),
     legend_loc: str = "upper right",
@@ -184,6 +189,8 @@ def main(
     -1: if failed
 
     """
+    # print the arguments
+    logger.info(f'arguments passed are network_test_results_csv_file_path: {network_test_results_csv_file_path}, network_test_aggregated_results_csv_file_path: {network_test_aggregated_results_csv_file_path}, cloud_ids: {cloud_ids}, aggregations: {aggregations}, legend_loc: {legend_loc}')
     # use network_test_aggregated_results_csv_file_path priority
     if network_test_aggregated_results_csv_file_path != None:
         if not exists(network_test_aggregated_results_csv_file_path):
@@ -194,6 +201,7 @@ def main(
                 f"please check the network_test_aggregated_results_csv_file_path or use network_test_results_csv_file_path"
             )
             exit(-1)
+        logger.info(f'network_test_aggregated_results_csv_file_path is used')
         simple_visualization_from_csv(
             network_test_aggregated_results_csv_file_path,
             cloud_ids,
@@ -211,6 +219,7 @@ def main(
             f"network_test_results_csv_file_path: {network_test_results_csv_file_path} not exists"
         )
         exit(-1)
+    logger.info(f'network_test_results_csv_file_path is used')
     df = calculation(network_test_results_csv_file_path)
     simple_visualization_from_dataframe(df, cloud_ids, aggregations, legend_loc)
     return 0
