@@ -91,19 +91,21 @@ def calculation(input_file_path: str, output_identifier="") -> DataFrame:
     df_aggregated = df_timestamp_group.agg(
         {cloud_ids[0]: ["min", "max", "mean", p50, p90, p99]}
     )
-    # rename the multiindex columns to plain columns
-    df_aggregated_columns = list(map("_".join, df_aggregated.columns))
+    logger.debug(f"df_aggregated: {df_aggregated}, df_aggregated.index: {df_aggregated.index}, df_aggregated.columns: {df_aggregated.columns}")
     for cloud_id in cloud_ids[1:]:
-        df_aggregated_temp = df_timestamp_group.agg(
-            {cloud_id: ["min", "max", "mean", p50, p90, p99]}
-        )
-        df_aggregated_columns += list(map("_".join, df_aggregated_temp.columns))
         df_aggregated = pd.concat(
-            [df_aggregated, df_aggregated_temp], ignore_index=True, axis=1
+            [
+                df_aggregated, 
+                df_timestamp_group.agg(
+                    {cloud_id: ["min", "max", "mean", p50, p90, p99]}
+                )
+            ],
+            axis=1,
         )
-
-    print(f"df_aggregated.shape: {df_aggregated.shape}")
-    df_aggregated.columns = df_aggregated_columns
+    # rename the multiindex columns to plain columns
+    logger.debug(f"df_aggregated.shape: {df_aggregated.shape}, df_aggregated.columns: {df_aggregated.columns}")
+    df_aggregated.columns = map("_".join, df_aggregated.columns)
+    logger.debug(f"rename the multiindex columns to plain columns, df_aggregated.columns: {df_aggregated.columns}")
     # save the aggregated df to csv file
     csv_file_path = join(
         dirname(realpath(__file__)),
