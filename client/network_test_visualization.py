@@ -150,12 +150,13 @@ def simple_visualization_from_dataframe(
     # aggregations = aggregations.split(",")
     # check cloud_ids, should included in df.columns
     if not set(cloud_ids) <= cloud_id_list_supported:
-        print(f"cloud_ids: {cloud_ids} should be included in df.columns: {df.columns}")
+        print(f"cloud_ids: {cloud_ids} should be included in {cloud_id_list_supported}")
         exit(-1)
     # check aggregations, should be included in ['min', 'max', 'mean', 'p50', 'p90', 'p99']
-    if not set(aggregations) <= set(["min", "max", "mean", "p50", "p90", "p99"]):
+    aggregation_list_supported = set(["min", "max", "mean", "p50", "p90", "p99"])
+    if not set(aggregations) <= aggregation_list_supported:
         print(
-            f"aggregations: {aggregations} should be included in ['min', 'max', 'mean', 'p50', 'p90', 'p99'], only these aggregations are supported."
+            f"aggregations: {aggregations} should be included in {aggregation_list_supported}, only these aggregations are supported."
         )
         exit(-1)
 
