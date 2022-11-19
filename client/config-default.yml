@@ -1,40 +1,41 @@
-# 各个云的存储价格（存储每GB多少钱）
+# 各个云的存储价格（存储每GB多少钱）TODO: 可能需要更新！
 storage_cost: [0.02,0.105,0.018,0.023,0.15,0.023]
 
-# 各个云读流量的价格（读出每GB多少钱）
+# 各个云的流量价格（流量每GB多少钱）TODO: 可能需要更新！
+outbound_cost: [0.02,0.105,0.018,0.023,0.15,0.023]
+
+# 各个云读流量的价格（读出每GB多少钱）TODO: 可能需要更新！
 read_cost: [0.21,0.199,0.07,0.07,0.02,0.07]
 
-# 各个云写流量的价格（写入每GB多少钱）
+# 各个云写流量的价格（写入每GB多少钱）TODO: 可能需要更新！
 write_cost: [0.21,0.199,0.07,0.07,0.02,0.07]
 
 # 云节点http服务的base_url, 拼接上/get,/put即是读写的endpoint
-# 分别对应 google, rackspace, amazon, azure, aliyun, tencent
 cloud_providers:
   - http://127.0.0.1:8080
   - http://127.0.0.1:8080
   - http://127.0.0.1:8080
   - http://127.0.0.1:8080
-  - http://127.0.0.1:8080
-  - http://127.0.0.1:8080
+
 
 # 测试矩阵，cloud_placements * data_size * read
 network_test:
   matrix:
     cloud_placements:
-      - [1,0,1,0,0,0]
+      - [1,1,1,1]
     data_sizes:
-      - 1024
-      - 2048
+      - 10240
+      - 10485760
     reads:
       - true
       - false
-  start_datetime: 2022-11-01 10:14:00
-  end_datetime: 2022-11-01 10:16:00
-  interval: 10
-  N: 6
+  start_datetime: 2022-11-01 13:30:00
+  end_datetime: 2022-11-02 13:30:00
+  interval: 30
+  N: 4
   k: 3
   n: 2
-  intermediate_save_seconds: 60
+  intermediate_save_seconds: 1800
 
 # 测试可视化
 network_test_visualization:
