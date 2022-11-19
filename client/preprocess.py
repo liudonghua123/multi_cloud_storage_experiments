@@ -116,8 +116,10 @@ def limit_lines_by_timestamp(lines, limit=10):
     # use this method to speed up the drop operation
     drop_index = []
     for _, group in df_timestamp_group:
+        # group.index[limit:].tolist() is the same as group[limit:].index.tolist()
         drop_index += group.index[limit:].tolist()
     df.drop(drop_index, inplace=True)
+    df.drop(columns=['timestamp_in_seconds'], inplace=True)
     return df.values.tolist()
     # df_result = DataFrame()
     # for _, group in df_timestamp_group:
