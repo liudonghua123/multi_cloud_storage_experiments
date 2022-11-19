@@ -30,12 +30,17 @@ from common.config_logging import init_logging
 
 logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 
-# read config.yml file using yaml
-with open(
-    join(dirname(realpath(__file__)), "config.yml"), mode="r", encoding="utf-8"
-) as file:
+# read config-default.yml, config.yml(optional, override the default configurations) using yaml
+default_config_file = "config-default.yml"
+config_file = "config.yml"
+logger.info(f"Loading default config file: {config_file}")
+with open(join(dirname(realpath(__file__)), default_config_file), mode="r", encoding="utf-8") as file:
     config = yaml.safe_load(file)
-
+if os.path.exists(join(dirname(realpath(__file__)), config_file)):
+    logger.info(f"Loading override config file: {config_file}")
+    with open(join(dirname(realpath(__file__)), config_file), mode="r", encoding="utf-8") as file:
+        # use **kwargs to merge the two dictionaries
+        config = {**config, **yaml.safe_load(file)}
 logger.info(f"load config: {config}")
 
 storage_cost: list[float] = config["storage_cost"]
