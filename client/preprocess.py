@@ -93,15 +93,17 @@ def limit_lines_by_timestamp(lines, limit=10):
     df = pd.DataFrame(lines)
     df['timestamp_in_seconds'] = df.apply(lambda x: x[0][:10], axis=1)
     df_timestamp_group: DataFrameGroupBy = df.groupby('timestamp_in_seconds')
-    # TODO: this method no response, need to fix
-    # for _, group in df_timestamp_group:
-    #     df.drop(group[limit:].index, inplace=True)
-    # return df.values.tolist()
-    df_result = DataFrame()
+    # use this method to speed up the drop operation
+    drop_index = []
     for _, group in df_timestamp_group:
-        df_result = pd.concat([df_result, group.head(limit)])
-    df_result.drop(columns=['timestamp_in_seconds'], inplace=True)
-    return df_result.values.tolist()
+        drop_index += group.index[limit:].tolist()
+    df.drop(drop_index, inplace=True)
+    return df.values.tolist()
+    # df_result = DataFrame()
+    # for _, group in df_timestamp_group:
+    #     df_result = pd.concat([df_result, group.head(limit)])
+    # df_result.drop(columns=['timestamp_in_seconds'], inplace=True)
+    # return df_result.values.tolist()
     
 
 if __name__ == "__main__":
