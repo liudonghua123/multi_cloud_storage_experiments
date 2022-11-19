@@ -10,3 +10,7 @@ snoop
 # for cli parsing
 # https://google.github.io/python-fire/guide/
 fire
+# use walrus (subclasses and extends the popular redis-py client) to store the metadata
+walrus
+# Beautiful spinners for terminal, IPython and Jupyter
+halo
