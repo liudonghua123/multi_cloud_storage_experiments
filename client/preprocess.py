@@ -36,7 +36,7 @@ class spinner_context:
     def __exit__(self, exc_type, exc_value, traceback):
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
-def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', limit: int = 0):
+def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1):
     
     """
     Process the input file and output the result to the output file. 
@@ -50,12 +50,17 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     Parameters:
     file_input (str): the input file path
     file_output (str): the output file path
-    limit (int): the limit of lines per seconds of timestamp
+    limit (bool): whether to apply limit operation
+    limit_lower (int): the limit lower bound
+    limit_upper (int): the limit upper bound
+    limit_percent (float): the limit percent
     
     Returns:
     None
 
     """
+    
+    print(f"Input file: {file_input}, output file: {file_output}, limit: {limit}, limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent}")
     
     # calculate the file lines of the file_input
     with spinner_context('Calculate file line count ...') as spinner:
@@ -99,9 +104,9 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     print(f"sorted {len(lines)} lines")
     
     # cut the lines to limit in each second, after sorting
-    if limit > 0:
-        with spinner_context(f'Limiting lines to {limit} in each second'):
-            lines = limit_lines_by_timestamp(lines, limit)
+    if limit:
+        with spinner_context(f'Limiting lines to limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent} in each second'):
+            lines = limit_lines_by_timestamp(lines, limit_lower, limit_upper, limit_percent)
         print(f'After limiting, {len(lines)} lines left')
     
     # Save the processed lines to the file_output
@@ -110,7 +115,7 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
             fout.write(','.join(line))
     print(f'Saved to: {file_output}')
 
-def limit_lines_by_timestamp(lines, limit=10):
+def limit_lines_by_timestamp(lines, limit_lower, limit_upper, limit_percent):
     # use pandas groupby to group the lines by the timestamp in seconds
     df = pd.DataFrame(lines)
     df['timestamp_in_seconds'] = df.apply(lambda x: x[0][:10], axis=1)
@@ -118,6 +123,7 @@ def limit_lines_by_timestamp(lines, limit=10):
     # use this method to speed up the drop operation
     drop_index = []
     for _, group in df_timestamp_group:
+        limit = min(max(int(len(group) * limit_percent), limit_lower), limit_upper)
         # group.index[limit:].tolist() is the same as group[limit:].index.tolist()
         drop_index += group.index[limit:].tolist()
     df.drop(drop_index, inplace=True)
