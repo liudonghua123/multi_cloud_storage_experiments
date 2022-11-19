@@ -8,7 +8,6 @@ import numpy as np
 # ndarray for type hints
 from numpy import ndarray
 from numpy import nan
-import schedule
 import yaml
 import random
 import snoop
@@ -30,6 +29,7 @@ with open(join(dirname(realpath(__file__)), "config.yml"), mode="r", encoding="u
 logger.info(f"load config: {config}")
 
 storage_cost : list[float] = config['storage_cost']
+outbound_cost : list[float] = config['outbound_cost']
 read_cost : list[float] = config['read_cost']
 write_cost : list[float] = config['write_cost']
 cloud_providers : list[str] = config['cloud_providers']
@@ -138,13 +138,30 @@ class AW_CUCB:
                     τ = changed_ticks
                     # TODO: reset FM-PHT
                     if self.read:
-                        # TODO: LDM(St', St)
-                        pass
+                        # LDM(St', St), ST: current placement_policy, ST': the previous placement_policy
+                        self.LDH(latency_cloud_timed[tick], placement_policy_timed[tick-1])
                     # TODO: verify correct? contains 0? ERROR!
                     # https://www.geeksforgeeks.org/numpy-minimum-in-python/
                 window_sizes = np.minimum(window_sizes, tick - τ + 1)
                 print(f"tick: {tick}, u_hat_it: {u_hat_it}, window_sizes: {window_sizes}")
                 
+    def LDM(self, current_placement_policy, previous_placement_policy):
+        # convert the placement_policy to the selected cloud providers
+        current_placement_policy_indices = set(np.where(current_placement_policy == 1)[0].tolist())
+        previous_placement_policy_indices = set(np.where(previous_placement_policy == 1)[0].tolist())
+        prepare_migrate_cloud_ids = previous_placement_policy_indices - current_placement_policy_indices
+        distination_migrate_cloud_ids = current_placement_policy_indices - previous_placement_policy_indices
+        logger.info(f"current_placement_policy: {current_placement_policy}, current_placement_policy_indices: {current_placement_policy_indices}, previous_placement_policy: {previous_placement_policy}, previous_placement_policy_indices: {previous_placement_policy_indices}, prepare_migrate_cloud_ids: {prepare_migrate_cloud_ids}, distination_migrate_cloud_ids: {distination_migrate_cloud_ids}")
+        # initial migration gains to 0
+        migration_gains = 0
+        if len(prepare_migrate_cloud_ids) > 0:
+            # calculate migration gains
+            migration_gains = sum(map(lambda i: self.data_size / self.k * (storage_cost[i] - outbound_cost[i]) - read_cost[i], prepare_migrate_cloud_ids)) - sum(map(lambda i: self.data_size / self.k * storage_cost[i] + write_cost[i], distination_migrate_cloud_ids))
+        if migration_gains > 0:
+            # migrate the data from prepare_migrate_cloud_ids to distination_migrate_cloud_ids
+            # TODO: process the migration
+            pass
+            
     def FM_PHT(self, U, L, tick, latency_cloud_timed):
         # initialzation
         # y is the exist latency of one of the cloud
