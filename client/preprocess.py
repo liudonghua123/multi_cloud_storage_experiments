@@ -34,7 +34,7 @@ class spinner_context:
     def __exit__(self, exc_type, exc_value, traceback):
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
-def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt'):
+def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', limit: int = 0):
     # calculate the file lines of the file_input
     with spinner_context('Calculate file line count ...') as spinner:
         file_input_lines = get_file_line_count(file_input)
@@ -76,11 +76,11 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
         lines.sort(key=lambda line: (line[0], reversor(line[4])))
     print(f"sorted {len(lines)} lines")
     
-    # cut the lines to 10 in each second, after sorting
-    limits_per_second = 10
-    with spinner_context(f'Limiting lines to {limits_per_second} in each second'):
-        lines = limit_lines_by_timestamp(lines, limits_per_second)
-    print(f'After limiting, {len(lines)} lines left')
+    # cut the lines to limit in each second, after sorting
+    if limit > 0:
+        with spinner_context(f'Limiting lines to {limit} in each second'):
+            lines = limit_lines_by_timestamp(lines, limit)
+        print(f'After limiting, {len(lines)} lines left')
     
     # Save the processed lines to the file_output
     with spinner_context('Saving the results ...'), open(file_output, 'w') as fout:
