@@ -35,6 +35,26 @@ class spinner_context:
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
 def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', limit: int = 0):
+    
+    """
+    Process the input file and output the result to the output file. 
+    READ->PROCESS->SORT[->LIMIT]->WRITE
+
+    This function will read the input file line by line, and process each line, insert a hunman readable timestamp.
+    Then sort the lines by the timestamp, and limit the lines by the timestamp if the limit > 0 
+    (the default limit 0 means do not apply limit operation) is specified.
+    And Finally, write the result to the output file.
+
+    Parameters:
+    file_input (str): the input file path
+    file_output (str): the output file path
+    limit (int): the limit of lines per seconds of timestamp
+    
+    Returns:
+    None
+
+    """
+    
     # calculate the file lines of the file_input
     with spinner_context('Calculate file line count ...') as spinner:
         file_input_lines = get_file_line_count(file_input)
