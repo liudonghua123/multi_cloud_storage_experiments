@@ -16,7 +16,7 @@ import pandas as pd
 from pandas import DataFrame
 from pandas.core.groupby.generic import DataFrameGroupBy
 import matplotlib.pyplot as plt
-import schedule
+import mplcursors
 import yaml
 import random
 import snoop
@@ -42,11 +42,18 @@ logger = init_logging(
     join(dirname(realpath(__file__)), "network_test_visualization.log")
 )
 
-# read config.yml file using yaml
-with open(
-    join(dirname(realpath(__file__)), "config.yml"), mode="r", encoding="utf-8"
-) as file:
+# read config-default.yml, config.yml(optional, override the default configurations) using yaml
+default_config_file = "config-default.yml"
+config_file = "config.yml"
+logger.info(f"Loading default config file: {config_file}")
+with open(join(dirname(realpath(__file__)), default_config_file), mode="r", encoding="utf-8") as file:
     config = yaml.safe_load(file)
+if os.path.exists(join(dirname(realpath(__file__)), config_file)):
+    logger.info(f"Loading override config file: {config_file}")
+    with open(join(dirname(realpath(__file__)), config_file), mode="r", encoding="utf-8") as file:
+        # use **kwargs to merge the two dictionaries
+        config = {**config, **yaml.safe_load(file)}
+logger.info(f"load config: {config}")
 
 # 分组粒度，单位秒
 group_size: int = config["network_test_visualization"]["group_size"]
@@ -183,12 +190,15 @@ def simple_visualization_from_dataframe(
     logger.debug(f"corrective step: {step}")
     x_pos = np.arange(x[0], x[-1], step)
     logger.debug(f"xtick_size: {xtick_size}, len(x_pos): {len(x_pos)}, x_pos: {x_pos}")
-    x_pos_label = list(map(lambda x: datetime.fromtimestamp(x).strftime("%y-%m-%d %H:%M"), x_pos))
+    x_pos_label = list(map(lambda x: datetime.fromtimestamp(x).strftime("%Y-%m-%d %H:%M"), x_pos))
     ax.set_xticks(x_pos)
     ax.set_xticklabels(x_pos_label)
     # ax.set_xticklabels(x_pos_label, rotation=45, ha='right')
     fig.autofmt_xdate(rotation=45)
     ax.legend(column_combinations, loc=legend_loc)
+    # Enable add some annotation when mouse hover on the point 
+    # mplcursors.cursor(ax,hover=True) # only show Y value, why?
+    mplcursors.cursor(ax,hover=True).connect("add", lambda sel: sel.annotation.set_text(f"x: {datetime.fromtimestamp(sel.target_[0]).strftime('%Y-%m-%d %H:%M')}\ny: {sel.target_[1]}"))
     plt.show()
 
 
