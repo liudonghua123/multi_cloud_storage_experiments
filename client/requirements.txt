@@ -14,3 +14,5 @@ fire
 walrus
 # Beautiful spinners for terminal, IPython and Jupyter
 halo
+# https://mplcursors.readthedocs.io/en/stable/examples/hover.html
+mplcursors
