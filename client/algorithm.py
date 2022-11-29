@@ -63,6 +63,13 @@ class MigrationRecord:
     migration_gains: float
     migration_cost: float
     
+@dataclass
+class ChangePointRecord:
+    tick: int
+    datetime: str
+    change_point_tick: list[int]
+    change_cloud_providers: list[int]
+    
     
 @dataclass
 class TraceData:
@@ -74,6 +81,7 @@ class TraceData:
     file_read: bool = True
     datetime_offset: int = 0
     latency: int = -1
+    placement_policy: list[int] = None
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
@@ -105,7 +113,7 @@ class TestData:
     default_data_file: str = 'data.bin'
     default_file_metadata_file: str = 'file_metadata.bin'
     
-    def __init__(self, file_path: str, N=6, n=3, k=2):
+    def __init__(self, file_path: str, N=6, n=3, k=2, size_enlarge=100):
         '''
         file_path: the path of the test data file
         '''
@@ -113,6 +121,7 @@ class TestData:
         self.N = N
         self.n = n
         self.k = k
+        self.size_enlarge = size_enlarge
         self.data = []
         self.file_metadata: dict[int: FileMetadata] = {}
     
@@ -157,7 +166,8 @@ class TestData:
                 # use offset and size combination as file_id, use int type
                 file_id = int(f'{offset}{size}')
                 offset = int(offset)
-                size = int(size)
+                # enlarge the size by 100 times
+                size = int(size) * self.size_enlarge
                 read = operation_type == 'Read'
                 initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
                 # if the file_id is not in the file_metadata, add it to the file_metadata
@@ -206,7 +216,7 @@ class TestData:
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=0.5, ψ2=0.5, ξ=0.5, b=0.5, δ=0.5, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=0.5, ψ2=0.5, ξ=0.5, b_increase=0.4, b_decrease=0.3, δ=0.05, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -218,11 +228,13 @@ class AW_CUCB:
         self.ψ1 = ψ1
         self.ψ2 = ψ2
         self.ξ = ξ
-        self.b = b
+        self.b_increase = b_increase
+        self.b_decrease = b_decrease
         self.δ = δ
         self.optimize_initial_exploration = optimize_initial_exploration
         self.LB = LB
         self.migration_records: list[MigrationRecord] = []
+        self.change_point_records: list[ChangePointRecord] = []
         
         
     def processing(self):
@@ -280,6 +292,7 @@ class AW_CUCB:
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
+            trace_data.placement_policy = '_'.join([str(i) for i, x in enumerate(placement_policy) if x == 1])
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
             # update statistics 17
@@ -292,16 +305,22 @@ class AW_CUCB:
                 liwi[clould_id] = 1 / Tiwi[clould_id] * np.sum(latency_of_cloud_previous_ticks, axis=0)
                 LB = latency_of_cloud_previous_ticks.max() - np.delete(latency_of_cloud_previous_ticks, np.where(latency_of_cloud_previous_ticks == 0)).min() if self.LB == None else self.LB
                 eit[clould_id] = LB * math.sqrt(self.ξ * math.log(window_sizes[clould_id], 10) / Tiwi[clould_id])
-            # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
-            # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.
-            # however, if some operands are np_array, then np_array=a*b+c will keep the datetype of np_array
-            u_hat_it = self.ψ1 * liwi + self.ψ2 * np.array(storage_cost) - eit
+                
+                # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
+                # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.
+                # however, if some operands are np_array, then np_array=a*b+c will keep the datetype of np_array
+                if trace_data.file_read:
+                    u_hat_it[clould_id] = self.ψ1 * liwi[clould_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[clould_id]) - eit[clould_id]
+                else:
+                    u_hat_it[clould_id] = self.ψ1 * liwi[clould_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[clould_id]) - eit[clould_id]
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
             
             # check whether FM_PHT
             changed, changed_ticks = self.FM_PHT(U,L,tick,latency_cloud_timed)
             logger.info(f"tick: {tick}, changed: {changed}, changed_ticks: {changed_ticks}")
             if any(changed):
+                # save the change point
+                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join([str(i) for i in changed_ticks if i != 0]), '_'.join([str(i) for i, x in enumerate(changed) if x == 1])))
                 # update τ from FM_PHT result
                 τ = changed_ticks
                 logger.info(f'tick: {tick}, τ: {τ}')
@@ -320,7 +339,7 @@ class AW_CUCB:
             logger.info(f'tick: {tick}, after update window_sizes: {window_sizes}, τ: {τ}')
             print(f"tick: {tick}, window_sizes: {window_sizes}")
                 
-    def LDM(self, tick, trace_data, previous_placement_policy, current_placement_policy):
+    def LDM(self, tick, trace_data: TraceData, previous_placement_policy, current_placement_policy):
         # convert the placement_policy to the selected cloud providers
         current_placement_policy_indices = set(np.where(current_placement_policy == 1)[0].tolist())
         previous_placement_policy_indices = set(np.where(previous_placement_policy == 1)[0].tolist())
@@ -331,9 +350,9 @@ class AW_CUCB:
         migration_gains = 0
         if len(prepare_migrate_cloud_ids) > 0:
             # calculate migration gains
-            migration_gains = sum(map(lambda i: self.data_size / self.k * (storage_cost[i] - outbound_cost[i]) - read_cost[i], prepare_migrate_cloud_ids)) - sum(map(lambda i: self.data_size / self.k * storage_cost[i] + write_cost[i], destination_migrate_cloud_ids))
+            migration_gains = sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * (storage_cost[i] - outbound_cost[i]) - read_cost[i], prepare_migrate_cloud_ids)) - sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[i] + write_cost[i], destination_migrate_cloud_ids))
             # calculate migration cost
-            migration_cost = sum(map(lambda i: self.data_size / self.k * outbound_cost[i] + read_cost[i], prepare_migrate_cloud_ids)) + sum(map(lambda i: self.data_size / self.k * storage_cost[i] + write_cost[i], destination_migrate_cloud_ids))
+            migration_cost = sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[i] + read_cost[i], prepare_migrate_cloud_ids)) + sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[i] + write_cost[i], destination_migrate_cloud_ids))
         if migration_gains > 0:
             logger.info(f'perform migration from {prepare_migrate_cloud_ids} to {destination_migrate_cloud_ids} at tick {tick}')
             # migrate the data from prepare_migrate_cloud_ids (read) to destination_migrate_cloud_ids (write)
@@ -360,12 +379,12 @@ class AW_CUCB:
             latency_cloud_exist = np.delete(latency_cloud, np.where(latency_cloud == 0))
             U[tick][cloud_id] = (tick - 1) / tick * U[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) - self.δ)
             # U_changed is array of bools, like [False, False, True, True, False, False]
-            U_changed = U[tick, :] - U_min >= self.b
+            U_changed = U[tick, :] - U_min >= self.b_increase
             # U_changed_ticks is array of ticks, like [0, 0, 5, 6, 0, 0]
             U_changed_ticks = np.array([index if changed else 0 for index, changed in enumerate(U_changed)])
             logger.info(f'tick: {tick}, U_changed: {U_changed}, U_changed_ticks: {U_changed_ticks}')
             L[tick][cloud_id] = (tick - 1) / tick * L[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
-            L_changed = L_max -L[tick, :] >= self.b
+            L_changed = L_max -L[tick, :] >= self.b_decrease
             L_changed_ticks = np.array([index if changed else 0 for index, changed in enumerate(L_changed)])
             logger.info(f'tick: {tick}, L_changed: {L_changed}, L_changed_ticks: {L_changed_ticks}')
             changed = U_changed + L_changed
@@ -375,19 +394,26 @@ class AW_CUCB:
         
     def save_result(self):
         # save the migration records
-        with open('migration_records.csv', 'w', newline='') as csvfile:
+        with open('results/migration_records.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = ['file_id', 'tick', 'start_time', 'latency', 'migration_gains', 'migration_cost']
             writer.writerow(header)
             for migration_record in self.migration_records:
                 writer.writerow([getattr(migration_record, column) for column in header])
         # save the trace data with latency
-        with open('trace_data_latency.csv', 'w', newline='') as csvfile:
+        with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'offset', 'file_size', 'file_read', 'latency']
+            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'placement_policy']
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])
+        # save the change points
+        with open('results/change_points.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            header = ['tick', 'datetime', 'change_point_tick', 'change_cloud_providers']
+            writer.writerow(header)
+            for change_point_record in self.change_point_records:
+                writer.writerow([getattr(change_point_record, column) for column in header])
     
 def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt')):
     # parsing the input file data
@@ -399,7 +425,9 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     # run the algorithm
     algorithm = AW_CUCB(data, file_metadata)
     algorithm.processing()
+    logger.info(f'processing finished')
     algorithm.save_result()
+    logger.info(f'save_result finished')
     
 if __name__ == "__main__":
     fire.core.Display = lambda lines, out: print(*lines, file=out)
