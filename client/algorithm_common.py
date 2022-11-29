@@ -66,6 +66,7 @@ class TraceData:
     datetime_offset: int = 0
     latency: int = -1
     placement_policy: list[int] = None
+    post_reward: float = 0
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
@@ -152,6 +153,7 @@ class TestData:
                 offset = int(offset)
                 # enlarge the size by 100 times
                 size = int(size) * self.size_enlarge
+                # size = 1024 * 1024 * 10
                 read = operation_type == 'Read'
                 initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
                 # if the file_id is not in the file_metadata, add it to the file_metadata

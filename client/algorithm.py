@@ -38,7 +38,7 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=0.5, ψ2=0.5, ξ=0.5, b_increase=0.4, b_decrease=0.3, δ=0.05, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=100, ξ=1, b_increase=0.4, b_decrease=0.3, δ=0.05, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -119,24 +119,24 @@ class AW_CUCB:
             latency_cloud_timed[tick] = latency_cloud
             # update statistics 17
             # Update statistics in time-window Wi(t) according to (17);
-            choosed_clould_ids = [i for i, x in enumerate(placement_policy) if x == 1]
-            # choosed_clould_ids = np.where(placement_policy == 1)[0]
-            for clould_id in choosed_clould_ids:
-                Tiwi[clould_id] = np.sum(placement_policy_timed[:tick + 1,clould_id], axis=0)
-                latency_of_cloud_previous_ticks = latency_cloud_timed[:tick + 1, clould_id]
-                liwi[clould_id] = 1 / Tiwi[clould_id] * np.sum(latency_of_cloud_previous_ticks, axis=0)
+            choosed_cloud_ids = [i for i, x in enumerate(placement_policy) if x == 1]
+            # choosed_cloud_ids = np.where(placement_policy == 1)[0]
+            for cloud_id in choosed_cloud_ids:
+                Tiwi[cloud_id] = np.sum(placement_policy_timed[:tick + 1,cloud_id], axis=0)
+                latency_of_cloud_previous_ticks = latency_cloud_timed[:tick + 1, cloud_id]
+                liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_of_cloud_previous_ticks, axis=0)
                 LB = latency_of_cloud_previous_ticks.max() - np.delete(latency_of_cloud_previous_ticks, np.where(latency_of_cloud_previous_ticks == 0)).min() if self.LB == None else self.LB
-                eit[clould_id] = LB * math.sqrt(self.ξ * math.log(window_sizes[clould_id], 10) / Tiwi[clould_id])
+                eit[cloud_id] = LB * math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
                 
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
                 # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.
                 # however, if some operands are np_array, then np_array=a*b+c will keep the datetype of np_array
                 if trace_data.file_read:
-                    u_hat_it[clould_id] = self.ψ1 * liwi[clould_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[clould_id]) - eit[clould_id]
+                    u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[cloud_id]) - eit[cloud_id]
                 else:
-                    u_hat_it[clould_id] = self.ψ1 * liwi[clould_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[clould_id]) - eit[clould_id]
+                    u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id]) - eit[cloud_id]
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
-            
+            trace_data.post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id], choosed_cloud_ids))
             # check whether FM_PHT
             changed, changed_ticks = self.FM_PHT(U,L,tick,latency_cloud_timed)
             logger.info(f"tick: {tick}, changed: {changed}, changed_ticks: {changed_ticks}")
@@ -225,7 +225,7 @@ class AW_CUCB:
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'placement_policy']
+            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'placement_policy', 'post_reward']
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])
@@ -245,11 +245,13 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     file_metadata_list = list(file_metadata.items())
     logger.info(f'head of data: {data[:5]}, tail of data: {data[-5:]}, head of file_metadata: {file_metadata_list[:5]}, tail of file_metadata: {file_metadata_list[-5:]}')
     # run the algorithm
+    start_time = time.time()
     algorithm = AW_CUCB(data, file_metadata)
     algorithm.processing()
     logger.info(f'processing finished')
     algorithm.save_result()
     logger.info(f'save_result finished')
+    logger.info(f'total time: {time.time() - start_time}')
     
 if __name__ == "__main__":
     fire.core.Display = lambda lines, out: print(*lines, file=out)
