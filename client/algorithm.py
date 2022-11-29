@@ -160,6 +160,11 @@ class AW_CUCB:
             window_sizes = np.minimum(self.default_window_size, tick + 1 - τ + 1)
             logger.info(f'tick: {tick}, after update window_sizes: {window_sizes}, τ: {τ}')
             print(f"tick: {tick}, window_sizes: {window_sizes}")
+            
+            # save the result interval
+            if tick % 100 == 0:
+                logger.info(f"tick: {tick}, save the result interval")
+                self.save_result()
                 
     def LDM(self, tick, trace_data: TraceData, previous_placement_policy, current_placement_policy):
         # convert the placement_policy to the selected cloud providers
