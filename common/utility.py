@@ -140,7 +140,7 @@ def do_request_sync(cloud_base_url, cloud_id, size, read) -> list:
 
 def get_latency_sync(clould_placements, tick, N, k, cloud_providers, data_size, read):
     # make a parallel request to cloud providers which is enabled in clould_placements
-    logger.info(f"get_latency_sync of {clould_placements}, {'read' if read else 'write'}, {data_size} started")
+    logger.debug(f"get_latency_sync of {clould_placements}, {'read' if read else 'write'}, {data_size} started")
     latency_cloud = np.zeros((N, ))
     request_start_datetime = None
     
@@ -150,10 +150,10 @@ def get_latency_sync(clould_placements, tick, N, k, cloud_providers, data_size, 
         for cloud_id, latency, result, start_datetime in return_values:
             if request_start_datetime is None:
                 request_start_datetime = start_datetime
-            logger.info(f"do_request_sync of {cloud_providers[cloud_id]}, {'read' if read else 'write'} {data_size} finished, used {latency} seconds")
+            logger.debug(f"do_request_sync of {cloud_providers[cloud_id]}, {'read' if read else 'write'} {data_size} finished, used {latency} seconds")
             if result != 'success':
                 logger.error(f"request to cloud {cloud_id} failed")
             else:
                 latency_cloud[cloud_id] = latency
-    logger.info(f"get_latency_sync of {clould_placements}, {'read' if read else 'write'}, {data_size} finished")
+    logger.debug(f"get_latency_sync of {clould_placements}, {'read' if read else 'write'}, {data_size} finished")
     return [request_start_datetime, *latency_cloud]
