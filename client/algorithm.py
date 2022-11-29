@@ -18,7 +18,9 @@ import asyncio
 import requests
 from requests.exceptions import Timeout, ConnectionError
 import fire
+import csv
 from typing import TypedDict
+from datetime import datetime
 
 # serialize and deserialize using jsonpickle or pickle
 # jsonpickle is better for human readable
@@ -51,6 +53,15 @@ class FileMetadata:
     offset: int
     size: int
     placement: list[int]
+    
+@dataclass
+class MigrationRecord:
+    file_id: int
+    tick: int
+    start_time: str
+    latency: int
+    migration_gains: float
+    migration_cost: float
     
     
 @dataclass
@@ -211,6 +222,7 @@ class AW_CUCB:
         self.δ = δ
         self.optimize_initial_exploration = optimize_initial_exploration
         self.LB = LB
+        self.migration_records: list[MigrationRecord] = []
         
         
     def processing(self):
@@ -266,6 +278,8 @@ class AW_CUCB:
             # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
             _, *latency_cloud = asyncio.run(get_latency(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read))
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
+            # update the latency of trace_data
+            trace_data.latency = max(latency_cloud)
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
             # update statistics 17
@@ -332,6 +346,7 @@ class AW_CUCB:
             # update the file_metadata
             logger.info(f'update the file_metadata at tick {tick}')
             self.file_metadata[trace_data.file_id].placement = current_placement_policy
+            self.migration_records.append(MigrationRecord(trace_data.file_id, tick, datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S.%f'), latency, migration_cost, migration_gains))
             
     def FM_PHT(self, U, L, tick, latency_cloud_timed):
         # initialzation
@@ -358,8 +373,21 @@ class AW_CUCB:
             return changed, changed_ticks
         
         
-    def print_output(self):
-        pass
+    def save_result(self):
+        # save the migration records
+        with open('migration_records.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            header = ['file_id', 'tick', 'start_time', 'latency', 'migration_gains', 'migration_cost']
+            writer.writerow(header)
+            for migration_record in self.migration_records:
+                writer.writerow([getattr(migration_record, column) for column in header])
+        # save the trace data with latency
+        with open('trace_data_latency.csv', 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            header = ['timestamp', 'file_id', 'offset', 'file_size', 'file_read', 'latency']
+            writer.writerow(header)
+            for trace_data in self.data:
+                writer.writerow([getattr(trace_data, column) for column in header])
     
 def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt')):
     # parsing the input file data
@@ -371,6 +399,7 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     # run the algorithm
     algorithm = AW_CUCB(data, file_metadata)
     algorithm.processing()
+    algorithm.save_result()
     
 if __name__ == "__main__":
     fire.core.Display = lambda lines, out: print(*lines, file=out)
