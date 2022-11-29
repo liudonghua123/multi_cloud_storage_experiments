@@ -114,7 +114,7 @@ class AW_CUCB:
                 placement_policy_timed[tick] = [1 if i in placement_policy else 0 for i in range(self.N)]
                 # make a request to the cloud and save the latency to the latency_cloud_timed
                 # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
-                latency_cloud = asyncio.run(self.get_latency(placement_policy_timed[tick], tick, self.N, self.k, cloud_providers, self.data_size, self.read))
+                latency_cloud = asyncio.run(get_latency(placement_policy_timed[tick], tick, self.N, self.k, cloud_providers, self.data_size, self.read))
                 logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
                 latency_cloud_timed[tick] = latency_cloud
             else:
@@ -140,7 +140,7 @@ class AW_CUCB:
                 # select the top n arms to added into the placement policy in ascending order
                 placement_policy = np.argsort(u_hat_it)[:self.placement_count]
                 placement_policy_timed[tick] = [1 if i in placement_policy else 0 for i in range(self.N)]
-                latency_cloud_timed[tick] = asyncio.run(self.get_latency(placement_policy_timed[tick], tick))
+                latency_cloud_timed[tick] = asyncio.run(get_latency(placement_policy_timed[tick], tick))
                 # play super arm St and observe the latency
                 changed, changed_ticks = self.FM_PHT(U,L,tick,latency_cloud_timed)
                 if any(changed):
