@@ -17,6 +17,9 @@ cloud_providers:
   - http://127.0.0.1:8080
   - http://127.0.0.1:8080
 
+# 是否测试环境
+debug: true
+
 
 # 测试矩阵，cloud_placements * data_size * read
 network_test:

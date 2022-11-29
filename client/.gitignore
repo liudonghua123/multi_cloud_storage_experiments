@@ -2,3 +2,7 @@ __tmp__
 *.log
 
 config.yml
+
+*.csv
+*.txt
+*.bin

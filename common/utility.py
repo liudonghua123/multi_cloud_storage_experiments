@@ -10,10 +10,42 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os.path import dirname, join, realpath
 from common.config_logging import init_logging
+from halo import Halo
+import yaml
+import random
 
 sys.path.append(dirname(realpath(".")))
 from common.config_logging import init_logging
 logger = init_logging(join(dirname(realpath(__file__)), "common.log"))
+
+
+# read config-default.yml, config.yml(optional, override the default configurations) using yaml
+def get_config(dir_path):
+    default_config_file = "config-default.yml"
+    config_file = "config.yml"
+    logger.info(f"Loading default config file: {config_file}")
+    with open(join(dir_path, default_config_file), mode="r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    if os.path.exists(join(dir_path, config_file)):
+        logger.info(f"Loading override config file: {config_file}")
+        with open(join(dir_path, config_file), mode="r", encoding="utf-8") as file:
+            # use **kwargs to merge the two dictionaries
+            config = {**config, **yaml.safe_load(file)}
+    return config
+
+class spinner_context:
+    def __init__(self, start_text: str, end_text: str = None, spinner_indicator: str = 'dots'):
+        self.start_text = start_text
+        self.end_text = end_text or start_text
+        self.spinner_indicator = spinner_indicator
+        self.spinner = Halo(text=self.start_text, spinner=self.spinner_indicator)
+        self.start_time = None
+    def __enter__(self):
+        self.start_time = time.perf_counter()
+        self.spinner.start()
+        return self.spinner
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
 
 async def do_request(cloud_base_url, cloud_id, size, read) -> list:
