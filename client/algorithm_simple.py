@@ -20,7 +20,7 @@ from common.config_logging import init_logging
 logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
     
 
-class EACH_OPTIMAL:
+class EACH_SIMPLE:
     def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=0.5, ψ2=0.5, ξ=0.5, b_increase=0.4, b_decrease=0.3, δ=0.05, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
@@ -47,18 +47,23 @@ class EACH_OPTIMAL:
         τ = np.full((self.N,),1)
         placement_policy_timed = np.zeros((self.ticks, self.N))
         latency_cloud_timed = np.zeros((self.ticks, self.N))
-        current_optimal_latency = np.full((self.N,),np.inf)
+        current_simple_latency = np.full((self.N,),np.inf)
         C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
         
         for tick, trace_data in enumerate(self.data):
             logger.info(f"[tick: {tick}]{'-'*20}")            
-            # initial phase, select the placement policy randomly
-            if tick < C_N_n_count:
+            # initial phase
+            
+            # The first tick, the placement policy is selected randomly
+            if tick == 0:
                 # write operation
-                placement_policy = self.file_metadata[trace_data.file_id].placement
+                placement_policy = np.array([1,1,1,0,0,0])
+            elif tick == 1:
+                # write operation
+                placement_policy = np.array([0,0,0,1,1,1])
             else:
-                # sort optimal latency
-                sorted_current_optimal_latency = np.argsort(current_optimal_latency)
+                # sort simple latency
+                sorted_current_simple_latency = np.argsort(current_simple_latency)
                 # Rank uˆi(t) in ascending order; 
                 # Select the top n arms to added into St for write operation
                 # Select the top k arms based on placement to added into St for read operation
@@ -67,17 +72,17 @@ class EACH_OPTIMAL:
                     placement = self.file_metadata[trace_data.file_id].placement
                     placement_policy = np.zeros((self.N,), dtype = int)
                     k = self.k
-                    for i, _ in enumerate(sorted_current_optimal_latency):
+                    for i, _ in enumerate(sorted_current_simple_latency):
                         if placement[i] == 1:
                             placement_policy[i] = 1
                             k -= 1
                             if k == 0:
                                 break
-                    logger.info(f"current_optimal_latency: {current_optimal_latency}, sorted_current_optimal_latency: {sorted_current_optimal_latency}")
+                    logger.info(f"current_simple_latency: {current_simple_latency}, sorted_current_simple_latency: {sorted_current_simple_latency}")
                     logger.info(f"placement: {placement}, placement_policy: {placement_policy}")
                 else:
                     # write operation
-                    placement_policy = [1 if i in sorted_current_optimal_latency[:self.n] else 0 for i in range(self.N)]
+                    placement_policy = [1 if i in sorted_current_simple_latency[:self.n] else 0 for i in range(self.N)]
             
             logger.info(f'placement policy: {placement_policy}')
             # do request to get latency
@@ -91,17 +96,16 @@ class EACH_OPTIMAL:
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
             
-            # update the optimal latency
+            # update the simple latency
             choosed_clould_ids = [i for i, x in enumerate(placement_policy) if x == 1]
             # choosed_clould_ids = np.where(placement_policy == 1)[0]
             for clould_id in choosed_clould_ids:
-                if current_optimal_latency[clould_id] > latency_cloud[clould_id]:
-                    current_optimal_latency[clould_id] = latency_cloud[clould_id]
+                current_simple_latency[clould_id] = latency_cloud[clould_id]
             
         
     def save_result(self):
         # save the trace data with latency
-        with open('results/trace_data_latency_optimal.csv', 'w', newline='') as csvfile:
+        with open('results/trace_data_latency_simple.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'placement_policy']
             writer.writerow(header)
@@ -116,7 +120,7 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     file_metadata_list = list(file_metadata.items())
     logger.info(f'head of data: {data[:5]}, tail of data: {data[-5:]}, head of file_metadata: {file_metadata_list[:5]}, tail of file_metadata: {file_metadata_list[-5:]}')
     # run the algorithm
-    algorithm = EACH_OPTIMAL(data, file_metadata)
+    algorithm = EACH_SIMPLE(data, file_metadata)
     algorithm.processing()
     logger.info(f'processing finished')
     algorithm.save_result()
