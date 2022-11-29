@@ -1,7 +1,9 @@
 from io import BytesIO
 import os
-from os.path import dirname, join, realpath, getsize
 import logging
+import tempfile
+
+from os.path import dirname, join, realpath, getsize
 from env_loader import load_env
 from datetime import datetime
 
@@ -60,12 +62,16 @@ def get():
 def put():
     file = request.files["file"]
     # save the uploaded file to a temporary file
-    temp_file_path = join(dirname(realpath(__file__)), "__tmp__")
-    file.save(temp_file_path)
-    file_upload_size = getsize(temp_file_path)
+    # temp_file_path = join(dirname(realpath(__file__)), "__tmp__")
+    # file.save(temp_file_path)
+    with tempfile.NamedTemporaryFile(delete=False) as tmp:
+        file.save(tmp)
+    file_upload_size = getsize(tmp.name)
     logging.info(
-        f"processed uploaded file: {file.filename}, saved to {temp_file_path}, size of {file_upload_size}"
+        f"processed uploaded file: {file.filename}, saved to {tmp.name}, size of {file_upload_size}"
     )
+    # remove the temporary file
+    os.unlink(tmp.name)
     # simple return success json response
     return jsonify(
         {
