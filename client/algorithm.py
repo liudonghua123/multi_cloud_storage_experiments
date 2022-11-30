@@ -33,12 +33,12 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 # wi: window_sizes is (N,) matrix
 # ξ: xi
 # ψ: psi
-# Wit: windows_sizes_timed is (T,N) matrix
-# lit: windows_sizes_timed is (T,N) matrix
+# Wit: window_sizes_timed is (T,N) matrix
+# lit: window_sizes_timed is (T,N) matrix
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=100, ξ=1, b_increase=0.4, b_decrease=0.3, δ=0.05, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=100, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.05, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -64,7 +64,6 @@ class AW_CUCB:
         τ = np.full((self.N,),1)
         window_sizes = np.full((self.N,),self.default_window_size)
         placement_policy_timed = np.zeros((self.ticks, self.N))
-        windows_sizes_timed = np.zeros((self.ticks, self.N))
         latency_cloud_timed = np.zeros((self.ticks, self.N))
         U = np.zeros((self.ticks + 1, self.N))
         L = np.zeros((self.ticks + 1, self.N))
@@ -108,24 +107,25 @@ class AW_CUCB:
                     placement_policy = [1 if i in sorted_u_hat_it[:self.n] else 0 for i in range(self.N)]
                     
             # do request to get latency
+            choosed_cloud_ids = [i for i, x in enumerate(placement_policy) if x == 1]
             # make a request to the cloud and save the latency to the latency_cloud_timed
             # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
             _, *latency_cloud = asyncio.run(get_latency(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read))
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
-            trace_data.placement_policy = '_'.join([str(i) for i, x in enumerate(placement_policy) if x == 1])
+            trace_data.placement_policy = '_'.join(map(str, choosed_cloud_ids))
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
             # update statistics 17
             # Update statistics in time-window Wi(t) according to (17);
-            choosed_cloud_ids = [i for i, x in enumerate(placement_policy) if x == 1]
             # choosed_cloud_ids = np.where(placement_policy == 1)[0]
             for cloud_id in choosed_cloud_ids:
-                Tiwi[cloud_id] = np.sum(placement_policy_timed[:tick + 1,cloud_id], axis=0)
-                latency_of_cloud_previous_ticks = latency_cloud_timed[:tick + 1, cloud_id]
-                liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_of_cloud_previous_ticks, axis=0)
-                LB = latency_of_cloud_previous_ticks.max() - np.delete(latency_of_cloud_previous_ticks, np.where(latency_of_cloud_previous_ticks == 0)).min() if self.LB == None else self.LB
+                start_tick = max(0, tick - window_sizes[cloud_id])
+                Tiwi[cloud_id] = np.sum(placement_policy_timed[start_tick: tick + 1, cloud_id], axis=0)
+                latency_cloud_previous = latency_cloud_timed[start_tick: tick + 1, cloud_id]
+                liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_cloud_previous, axis=0)
+                LB = latency_cloud_previous.max() - np.delete(latency_cloud_previous, np.where(latency_cloud_previous == 0)).min() if self.LB == None else self.LB
                 eit[cloud_id] = LB * math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
                 
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
@@ -135,8 +135,15 @@ class AW_CUCB:
                     u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[cloud_id]) - eit[cloud_id]
                 else:
                     u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id]) - eit[cloud_id]
+            
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
-            trace_data.post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id], choosed_cloud_ids))
+            if trace_data.file_read:
+                post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[cloud_id], choosed_cloud_ids))
+            else: 
+                post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id], choosed_cloud_ids))
+            trace_data.post_reward = post_reward
+            logger.info(f"tick: {tick}, post_reward: {post_reward}")
+            
             # check whether FM_PHT
             changed, changed_ticks = self.FM_PHT(U,L,tick,latency_cloud_timed)
             logger.info(f"tick: {tick}, changed: {changed}, changed_ticks: {changed_ticks}")
@@ -146,7 +153,6 @@ class AW_CUCB:
                 # update τ from FM_PHT result
                 τ = changed_ticks
                 logger.info(f'tick: {tick}, τ: {τ}')
-                # TODO: reset FM-PHT
                 # if read operation
                 if trace_data.file_read:
                     # St' = file_metadata[file_id].placement, donote as previous_placement_policy
@@ -204,18 +210,29 @@ class AW_CUCB:
         for cloud_id in range(self.N):
             latency_cloud = latency_cloud_timed[:,cloud_id]
             latency_cloud_exist = np.delete(latency_cloud, np.where(latency_cloud == 0))
+            
             U[tick][cloud_id] = (tick - 1) / tick * U[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) - self.δ)
-            # U_changed is array of bools, like [False, False, True, True, False, False]
             U_changed = U[tick, :] - U_min >= self.b_increase
-            # U_changed_ticks is array of ticks, like [0, 0, 5, 6, 0, 0]
-            U_changed_ticks = np.array([index if changed else 0 for index, changed in enumerate(U_changed)])
-            logger.info(f'tick: {tick}, U_changed: {U_changed}, U_changed_ticks: {U_changed_ticks}')
+            U_changed_ticks = np.argmin(U[:tick, :] , axis=0)
+            logger.info(f'U_changed: {U_changed}, U_changed_ticks: {U_changed_ticks}')
+            
             L[tick][cloud_id] = (tick - 1) / tick * L[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
             L_changed = L_max -L[tick, :] >= self.b_decrease
-            L_changed_ticks = np.array([index if changed else 0 for index, changed in enumerate(L_changed)])
-            logger.info(f'tick: {tick}, L_changed: {L_changed}, L_changed_ticks: {L_changed_ticks}')
+            L_changed_ticks = np.argmax(L[:tick, :] , axis=0)
+            logger.info(f'L_changed: {L_changed}, L_changed_ticks: {L_changed_ticks}')
+            
             changed = U_changed + L_changed
             changed_ticks = U_changed_ticks + L_changed_ticks
+            
+            # reset FM-PHT
+            # If no change ticks detected, 0 is returned, and reset the U or L is safe
+            if any(U_changed):
+                for index, tick in enumerate(U_changed_ticks):
+                    U[:tick, index] = 0
+            if any(L_changed):
+                for index, tick in enumerate(L_changed_ticks):
+                    L[:tick, index] = 0
+                
             return changed, changed_ticks
         
         
