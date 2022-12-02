@@ -250,6 +250,14 @@ class AW_CUCB:
         tick += 1
         # logger.info(f'U_min:tick,  {U_min}tick, , L_max: {L_max}')
         # U[0]={0}, L[0]={0}, the tick start from 1
+        
+        def find_exists_value_backward(array, row, column):
+            while row >= 0:
+                if array[row][column] != 0:
+                    return array[row][column]
+                row -= 1
+            return 0
+        
         changed_ticks: list[ChangePoint] = []
         for cloud_id in range(self.N):
             # skip the cloud_id that is not used
@@ -259,9 +267,9 @@ class AW_CUCB:
             latency_cloud = latency_cloud_timed[self.last_change_tick[cloud_id]:tick, cloud_id]
             latency_cloud_exist = np.delete(latency_cloud, np.where(latency_cloud == 0))
             
-            U[tick][cloud_id] = (tick - 1) / tick * U[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) - self.δ)
+            U[tick][cloud_id] = (tick - 1) / tick * find_exists_value_backward(U, tick-1, cloud_id) + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) - self.δ)
             
-            L[tick][cloud_id] = (tick - 1) / tick * L[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
+            L[tick][cloud_id] = (tick - 1) / tick * find_exists_value_backward(L, tick-1, cloud_id) + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
             
             U_min[tick-1, cloud_id] = U[:tick + 1, cloud_id].min()
             L_max[tick-1, cloud_id] = L[:tick + 1, cloud_id].max()
