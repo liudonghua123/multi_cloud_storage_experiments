@@ -38,7 +38,7 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=100, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.05, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=100, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -57,6 +57,7 @@ class AW_CUCB:
         self.LB = LB
         self.migration_records: list[MigrationRecord] = []
         self.change_point_records: list[ChangePointRecord] = []
+        self.last_change_tick: list[int] = [0] * self.N
         
         
     def processing(self):
@@ -67,6 +68,8 @@ class AW_CUCB:
         latency_cloud_timed = np.zeros((self.ticks, self.N))
         U = np.zeros((self.ticks + 1, self.N))
         L = np.zeros((self.ticks + 1, self.N))
+        U_min = np.zeros((self.ticks + 1, self.N))
+        L_max = np.zeros((self.ticks + 1, self.N))
         C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
         Tiwi = np.zeros((self.N,))
         liwi = np.zeros((self.N,))
@@ -145,11 +148,13 @@ class AW_CUCB:
             logger.info(f"tick: {tick}, post_reward: {post_reward}")
             
             # check whether FM_PHT
-            changed, changed_ticks = self.FM_PHT(U,L,tick,latency_cloud_timed)
-            logger.info(f"tick: {tick}, changed: {changed}, changed_ticks: {changed_ticks}")
-            if any(changed):
+            changed_ticks = self.FM_PHT(U, L, U_min, L_max, tick, latency_cloud_timed)
+            logger.info(f"tick: {tick}, changed_ticks: {changed_ticks}")
+            if any(changed_ticks):
+                # convert changed_ticks from ChangePoint to int
+                changed_ticks = list(map(lambda x: x.tick if x != None else 0, changed_ticks))
                 # save the change point
-                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join([str(i) for i in changed_ticks if i != 0]), '_'.join([str(i) for i, x in enumerate(changed) if x == 1])))
+                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join([str, changed_ticks])))
                 # update τ from FM_PHT result
                 τ = changed_ticks
                 logger.info(f'tick: {tick}, τ: {τ}')
@@ -199,41 +204,99 @@ class AW_CUCB:
             logger.info(f'update the file_metadata at tick {tick}')
             self.file_metadata[trace_data.file_id].placement = current_placement_policy
             self.migration_records.append(MigrationRecord(trace_data.file_id, tick, datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S.%f'), latency, migration_cost, migration_gains))
-            
-    def FM_PHT(self, U, L, tick, latency_cloud_timed):
-        # initialzation
-        # y is the exist latency of one of the cloud
-        U_min = U.min(axis=0)
-        L_max = L.max(axis=0)
-        # U[0]={0}, L[0]={0}, the tick start from 1
+ 
+    def test_FM_PHT(self, test_csv_file: str):
+        # parse the test csv file
+        latency_cloud_timed = []
+        with open(test_csv_file, 'r') as f:
+            reader = csv.reader(f)
+            # skip the header
+            next(reader)
+            for row in reader:
+                latency_cloud_timed.append(list(map(float, row)))
+        # invoke FM_PHT
+        ticks = len(latency_cloud_timed)
+        self.N = 4
+        latency_cloud_timed = np.array(latency_cloud_timed)
+        U = np.zeros((ticks + 1, self.N))
+        L = np.zeros((ticks + 1, self.N))
+        U_min = np.zeros((ticks + 1, self.N))
+        L_max = np.zeros((ticks + 1, self.N))
+        detected_ticks = []
+        # self.δ = 0.9    
+        for tick in range(ticks):
+            changed_ticks = self.FM_PHT(U, L, U_min, L_max, tick, latency_cloud_timed)
+            if any(changed_ticks):
+                detected_ticks.append(tick)
+                logger.info(f'tick: {tick}, changed_ticks: {changed_ticks}')
+        logger.info(f'self.δ: {self.δ}, detected_ticks count: {len(detected_ticks)}, {detected_ticks}')
+        self.save_matrix_as_csv(U_min, 'U_min.csv')
+        self.save_matrix_as_csv(L_max, 'L_max.csv')
+        self.save_matrix_as_csv(U, 'U.csv')
+        self.save_matrix_as_csv(L, 'L.csv')
+        
+    # save the matrix as csv file
+    def save_matrix_as_csv(self, matrix, file_name):
+        with open(file_name, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerows(matrix)
+                 
+    def FM_PHT(self, U, L, U_min, L_max, tick, latency_cloud_timed):
         tick += 1
+        # logger.info(f'U_min:tick,  {U_min}tick, , L_max: {L_max}')
+        # U[0]={0}, L[0]={0}, the tick start from 1
+        changed_ticks: list[ChangePoint] = []
         for cloud_id in range(self.N):
-            latency_cloud = latency_cloud_timed[:,cloud_id]
+            # skip the cloud_id that is not used
+            if latency_cloud_timed[tick - 1, cloud_id] == 0:
+                continue
+            latency_cloud = latency_cloud_timed[self.last_change_tick[cloud_id]:tick, cloud_id]
             latency_cloud_exist = np.delete(latency_cloud, np.where(latency_cloud == 0))
             
             U[tick][cloud_id] = (tick - 1) / tick * U[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) - self.δ)
-            U_changed = U[tick, :] - U_min >= self.b_increase
-            U_changed_ticks = np.argmin(U[:tick, :] , axis=0)
-            logger.info(f'U_changed: {U_changed}, U_changed_ticks: {U_changed_ticks}')
             
             L[tick][cloud_id] = (tick - 1) / tick * L[tick - 1][cloud_id] + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
-            L_changed = L_max -L[tick, :] >= self.b_decrease
-            L_changed_ticks = np.argmax(L[:tick, :] , axis=0)
-            logger.info(f'L_changed: {L_changed}, L_changed_ticks: {L_changed_ticks}')
             
-            changed = U_changed + L_changed
-            changed_ticks = U_changed_ticks + L_changed_ticks
+            U_min[tick-1, cloud_id] = U[:tick + 1, cloud_id].min()
+            L_max[tick-1, cloud_id] = L[:tick + 1, cloud_id].max()
+            changed_tick = None
+            if U[tick, cloud_id] - U_min[tick-1, cloud_id] >= self.b_increase:
+                changed_tick = ChangePoint(np.argmin(U[:tick, cloud_id]) , ChangePoint.INCREASE)
+            if L_max[tick-1, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
+                if changed_tick != None:
+                    raise RuntimeError('U and L both changed')
+                changed_tick = ChangePoint(np.argmax(L[:tick, cloud_id]), ChangePoint.DECREASE)
+            # if changed_tick != None:
+            #     logger.info(f'tick: {tick - 1}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
+            changed_ticks.append(changed_tick)
+        
+        # reset FM-PHT
+        if any(changed_ticks):
+            logger.info(f'tick: {tick - 1}, current latency_cloud: {latency_cloud_timed[tick - 1]}, latency_cloud_timed[tick - 5: tick + 5]: \n{latency_cloud_timed[tick - 5: tick + 5]}')
             
-            # reset FM-PHT
-            # If no change ticks detected, 0 is returned, and reset the U or L is safe
-            if any(U_changed):
-                for index, tick in enumerate(U_changed_ticks):
-                    U[:tick, index] = 0
-            if any(L_changed):
-                for index, tick in enumerate(L_changed_ticks):
-                    L[:tick, index] = 0
+            for index, changed_tick in enumerate(changed_ticks):
+                if changed_tick == None:
+                    continue
                 
-            return changed, changed_ticks
+                self.last_change_tick[index] = changed_tick.tick
+                if changed_tick.type == ChangePoint.INCREASE:
+                    U[:changed_tick.tick + 1, index] = 0
+                    U_min[:changed_tick.tick, index] = 0
+                    U_min[changed_tick.tick, index] = U[changed_tick.tick + 1: tick + 1, index].min()
+                    # latency_cloud_timed[:changed_tick.tick, index] = 0
+                elif changed_tick.type == ChangePoint.DECREASE:
+                    L[:changed_tick.tick + 1, index] = 0
+                    L_max[:changed_tick.tick, index] = 0
+                    L_max[changed_tick.tick, index] = L[changed_tick.tick + 1: tick + 1, index].max()
+                    # latency_cloud_timed[:changed_tick.tick, index] = 0
+            
+            # save the U_min and L_max, U and L matrix        
+            # self.save_matrix_as_csv(U_min, 'U_min.csv')
+            # self.save_matrix_as_csv(L_max, 'L_max.csv')
+            # self.save_matrix_as_csv(U, 'U.csv')
+            # self.save_matrix_as_csv(L, 'L.csv')
+                    
+        return changed_ticks
         
         
     def save_result(self):
@@ -259,6 +322,7 @@ class AW_CUCB:
             for change_point_record in self.change_point_records:
                 writer.writerow([getattr(change_point_record, column) for column in header])
     
+    
 def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt')):
     # parsing the input file data
     test_data = TestData(input_file)
@@ -274,7 +338,11 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     algorithm.save_result()
     logger.info(f'save_result finished')
     logger.info(f'total time: {time.time() - start_time}')
+
+def test(test_csv_file: str = 'network_test_results/network_test_aggregated__mean.csv'):
+    algorithm = AW_CUCB([], [])
+    algorithm.test_FM_PHT(test_csv_file)
     
 if __name__ == "__main__":
     fire.core.Display = lambda lines, out: print(*lines, file=out)
-    fire.Fire(main)
+    fire.Fire(test)

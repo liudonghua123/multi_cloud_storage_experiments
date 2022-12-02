@@ -10,7 +10,8 @@ import random
 # serialize and deserialize using jsonpickle or pickle
 # jsonpickle is better for human readable
 # pickle is better for performance and smaller size
-import pickle # pickle.dumps / pickle.loads
+import pickle
+from typing import Literal # pickle.dumps / pickle.loads
 
 # In order to run this script directly, you need to add the parent directory to the sys.path
 # Or you need to run this script in the parent directory using the command: python -m client.algorithm
@@ -54,6 +55,25 @@ class ChangePointRecord:
     change_point_tick: list[int]
     change_cloud_providers: list[int]
     
+
+class ChangePoint:
+    INCREASE = 'increase'
+    DECREASE = 'decrease'
+    
+    def __init__(self, tick: int, type: Literal["increase", "decrease"]) -> None:
+        self.tick = tick
+        self.type = type
+    
+    def __add__(self, other):
+        if other is None:
+            return self
+        raise RuntimeError("ChangePoint can only be added to None")
+    
+    def __str__(self) -> str:
+        return f"ChangePoint(tick={self.tick}, type={self.type})"
+    
+    def __repr__(self) -> str:
+        return f"ChangePoint(tick={self.tick}, type={self.type})"
     
 @dataclass
 class TraceData:
