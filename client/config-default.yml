@@ -24,6 +24,9 @@ cloud_providers:
 # 是否测试环境
 debug: true
 
+# 网络请求最大重试次数
+max_retries: 3
+
 
 # 测试矩阵，cloud_placements * data_size * read
 network_test:

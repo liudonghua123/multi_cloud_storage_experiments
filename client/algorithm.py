@@ -152,7 +152,9 @@ class AW_CUCB:
             logger.info(f"tick: {tick}, changed_ticks: {changed_ticks}")
             if any(changed_ticks):
                 # convert changed_ticks from ChangePoint to int
+                logger.info(f'before convert, changed_ticks: {changed_ticks}')
                 changed_ticks = list(map(lambda x: x.tick if x != None else 0, changed_ticks))
+                logger.info(f'after convert, changed_ticks: {changed_ticks}')
                 # save the change point
                 self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join([str, changed_ticks])))
                 # update τ from FM_PHT result
@@ -249,6 +251,7 @@ class AW_CUCB:
         for cloud_id in range(self.N):
             # skip the cloud_id that is not used
             if latency_cloud_timed[tick - 1, cloud_id] == 0:
+                changed_ticks.append(None)
                 continue
             latency_cloud = latency_cloud_timed[self.last_change_tick[cloud_id]:tick, cloud_id]
             latency_cloud_exist = np.delete(latency_cloud, np.where(latency_cloud == 0))

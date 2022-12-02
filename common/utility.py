@@ -2,6 +2,8 @@ import numpy as np
 import asyncio
 import requests
 from requests.exceptions import Timeout, ConnectionError
+from requests.adapters import HTTPAdapter
+from requests.exceptions import ConnectionError
 import sys
 import time
 import os
@@ -17,6 +19,18 @@ import random
 sys.path.append(dirname(realpath(".")))
 from common.config_logging import init_logging
 logger = init_logging(join(dirname(realpath(__file__)), "common.log"))
+
+session = requests.Session()
+
+def init_request_retries_session(cloud_providers, max_retries = 3):
+    '''
+    Configure the number of retries for each cloud provider
+    This is an optional operation, if you don't want to configure it, the http request will use the default none retry strategy
+    '''
+    cloud_adapter = HTTPAdapter(max_retries=max_retries)
+    for cloud_base_url in cloud_providers:
+        logger.info(f'init_request_retries_session {cloud_base_url} max_retries: {max_retries}')
+        session.mount(cloud_base_url, cloud_adapter)
 
 
 # read config-default.yml, config.yml(optional, override the default configurations) using yaml
@@ -52,22 +66,21 @@ async def do_request(cloud_base_url, cloud_id, size, read) -> list:
     # make a request to cloud provider
     result = 'success'
     try:
-        start_time = time.time()
         start_datetime = datetime.now()
         latency = 0
         if read:
             url = f"{cloud_base_url}/get?size={size}"
             logger.debug(f"do_request {url} make read request url: {url}")
-            response = requests.get(url, timeout=10)
-            latency = time.time() - start_time
+            response = session.get(url, timeout=10)
+            latency = response.elapsed.total_seconds()
             logger.debug(f"do_request {url} got read response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
         else:
             url = f"{cloud_base_url}/put?size={size}"
             logger.debug(f"do_request {url} make write request url: {url}")
-            response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
-            latency = time.time() - start_time
+            response = session.put(url, files={"file": os.urandom(size)}, timeout=10)
+            latency = response.elapsed.total_seconds()
             logger.debug(f"do_request {url} got write response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
@@ -108,22 +121,21 @@ def do_request_sync(cloud_base_url, cloud_id, size, read) -> list:
     # make a request to cloud provider
     result = 'success'
     try:
-        start_time = time.time()
         start_datetime = datetime.now()
         latency = 0
         if read:
             url = f"{cloud_base_url}/get?size={size}"
             logger.debug(f"do_request_sync {url} make read request url: {url}")
-            response = requests.get(url, timeout=10)
-            latency = time.time() - start_time
+            response = session.get(url, timeout=10)
+            latency = response.elapsed.total_seconds()
             logger.debug(f"do_request_sync {url} got read response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'
         else:
             url = f"{cloud_base_url}/put?size={size}"
             logger.debug(f"do_request_sync {url} make write request url: {url}")
-            response = requests.put(url, files={"file": os.urandom(size)}, timeout=10)
-            latency = time.time() - start_time
+            response = session.put(url, files={"file": os.urandom(size)}, timeout=10)
+            latency = response.elapsed.total_seconds()
             logger.debug(f"do_request_sync {url} got write response, status_code: ${response.status_code}")
             if response.status_code != 200:
                 result = 'fail'

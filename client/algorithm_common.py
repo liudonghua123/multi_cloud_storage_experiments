@@ -17,7 +17,7 @@ from typing import Literal # pickle.dumps / pickle.loads
 # Or you need to run this script in the parent directory using the command: python -m client.algorithm
 sys.path.append(dirname(dirname(realpath(__file__))))
 
-from common.utility import spinner_context, get_config
+from common.utility import spinner_context, get_config, init_request_retries_session
 from common.config_logging import init_logging
 
 logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
@@ -31,7 +31,9 @@ read_cost : list[float] = config['read_cost']
 write_cost : list[float] = config['write_cost']
 cloud_providers : list[str] = config['cloud_providers']
 debug : bool = config['debug']
+max_retries: int = config['max_retries']
 
+init_request_retries_session(cloud_providers, max_retries)
 
 @dataclass
 class FileMetadata:
