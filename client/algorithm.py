@@ -264,7 +264,10 @@ class AW_CUCB:
                 changed_tick = ChangePoint(np.argmin(U[:tick, cloud_id]) , ChangePoint.INCREASE)
             if L_max[tick-1, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
-                    raise RuntimeError('U and L both changed')
+                    logger.info(f'latency_cloud_timed[self.last_change_tick[cloud_id]:tick]: \n{latency_cloud_timed[self.last_change_tick[cloud_id]:tick]}')
+                    logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
+                    logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
+                    raise RuntimeError(f'tick: {tick}, could_id: {cloud_id}, U and L both changed, this should not happen')
                 changed_tick = ChangePoint(np.argmax(L[:tick, cloud_id]), ChangePoint.DECREASE)
             # if changed_tick != None:
             #     logger.info(f'tick: {tick - 1}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
@@ -345,4 +348,4 @@ def test(test_csv_file: str = 'network_test_results/network_test_aggregated__mea
     
 if __name__ == "__main__":
     fire.core.Display = lambda lines, out: print(*lines, file=out)
-    fire.Fire(test)
+    fire.Fire(main)
