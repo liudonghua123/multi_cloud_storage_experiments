@@ -278,6 +278,11 @@ class AW_CUCB:
                 changed_tick = ChangePoint(np.argmin(U[:tick, cloud_id]) , ChangePoint.INCREASE)
             if L_max[tick-1, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
+                    #save the U_min and L_max, U and L matrix        
+                    self.save_matrix_as_csv(U_min, 'U_min.csv')
+                    self.save_matrix_as_csv(L_max, 'L_max.csv')
+                    self.save_matrix_as_csv(U, 'U.csv')
+                    self.save_matrix_as_csv(L, 'L.csv')
                     logger.info(f'latency_cloud_timed[self.last_change_tick[cloud_id]:tick]: \n{latency_cloud_timed[self.last_change_tick[cloud_id]:tick]}')
                     logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
                     logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
