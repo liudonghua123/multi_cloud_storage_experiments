@@ -14,7 +14,7 @@ from algorithm_common import *
 
 sys.path.append(dirname(dirname(realpath(__file__))))
 
-from common.utility import get_latency
+from common.utility import get_latency, get_latency_sync
 from common.config_logging import init_logging
 
 logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
@@ -113,7 +113,10 @@ class AW_CUCB:
             choosed_cloud_ids = [i for i, x in enumerate(placement_policy) if x == 1]
             # make a request to the cloud and save the latency to the latency_cloud_timed
             # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
+            # Use coroutine to make request
             _, *latency_cloud = asyncio.run(get_latency(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read))
+            # Use thread to make request
+            _, *latency_cloud = get_latency_sync(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read)
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
@@ -156,9 +159,9 @@ class AW_CUCB:
                 changed_ticks = list(map(lambda x: x.tick if x != None else 0, changed_ticks))
                 logger.info(f'after convert, changed_ticks: {changed_ticks}')
                 # save the change point
-                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join([str, changed_ticks])))
+                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join(map(str, changed_ticks)), '_'.join([str(i) if v != 0 else '0' for i, v in enumerate(changed_ticks)])))
                 # update τ from FM_PHT result
-                τ = changed_ticks
+                τ = np.array(changed_ticks)
                 logger.info(f'tick: {tick}, τ: {τ}')
                 # if read operation
                 if trace_data.file_read:
