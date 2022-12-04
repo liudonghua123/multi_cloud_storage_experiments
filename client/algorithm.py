@@ -165,6 +165,7 @@ class AW_CUCB:
             St_hat = self.file_metadata[trace_data.file_id].placement
             # St = select the top n from N in uit, donote as current_placement_policy
             St = [1 if i in np.argsort(u_hat_it)[:self.n] else 0 for i in range(self.N)]
+            trace_data.placement = '   '.join(map(str, self.file_metadata[trace_data.file_id].placement))
             trace_data.migration_targets = '   '.join(map(str, St))
             if any(changed_ticks):
                 # convert changed_ticks from ChangePoint to int
@@ -172,7 +173,7 @@ class AW_CUCB:
                 changed_ticks = list(map(lambda x: x.tick if x != None else 0, changed_ticks))
                 logger.info(f'after convert, changed_ticks: {changed_ticks}')
                 # save the change point
-                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '   '.join(map(float_to_string, changed_ticks)), '   '.join([str(i) if v != 0 else '0' for i, v in enumerate(changed_ticks)])))
+                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '   '.join(map(str, changed_ticks)), '   '.join([str(i) if v != 0 else '0' for i, v in enumerate(changed_ticks)])))
                 # update τ from FM_PHT result
                 τ = np.array(changed_ticks)
                 logger.info(f'tick: {tick}, τ: {τ}')
@@ -343,7 +344,7 @@ class AW_CUCB:
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_gains', 'migration_cost']
+            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_gains', 'migration_cost']
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])
