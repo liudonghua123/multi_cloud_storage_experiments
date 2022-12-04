@@ -100,6 +100,10 @@ class TraceData:
     migration_path: str = ''
     migration_gains: float = 0
     migration_cost: float = 0
+    U: str = ''
+    L: str = ''
+    U_min: str = ''
+    L_max: str = ''
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:

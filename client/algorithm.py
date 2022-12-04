@@ -159,7 +159,7 @@ class AW_CUCB:
             logger.info(f"tick: {tick}, post_reward: {post_reward}")
             
             # check whether FM_PHT
-            changed_ticks = self.FM_PHT(U, L, U_min, L_max, tick, latency_cloud_timed)
+            changed_ticks = self.FM_PHT(trace_data, U, L, U_min, L_max, tick, latency_cloud_timed)
             logger.info(f"tick: {tick}, changed_ticks: {changed_ticks}")
             # St' = file_metadata[file_id].placement, donote as previous_placement_policy
             St_hat = self.file_metadata[trace_data.file_id].placement
@@ -259,7 +259,7 @@ class AW_CUCB:
             writer = csv.writer(f)
             writer.writerows(matrix)
                  
-    def FM_PHT(self, U, L, U_min, L_max, tick, latency_cloud_timed):
+    def FM_PHT(self, trace_data, U, L, U_min, L_max, tick, latency_cloud_timed):
         tick += 1
         # logger.info(f'U_min:tick,  {U_min}tick, , L_max: {L_max}')
         # U[0]={0}, L[0]={0}, the tick start from 1
@@ -305,6 +305,11 @@ class AW_CUCB:
             #     logger.info(f'tick: {tick - 1}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
         
+        trace_data.U = '   '.join(map(float_to_string, U[tick]))
+        trace_data.L = '   '.join(map(float_to_string, L[tick]))
+        trace_data.U_min = '   '.join(map(float_to_string, U_min[tick-1]))
+        trace_data.L_max = '   '.join(map(float_to_string, L_max[tick-1]))
+        
         # reset FM-PHT
         if any(changed_ticks):
             logger.info(f'tick: {tick - 1}, current latency_cloud: {latency_cloud_timed[tick - 1]}, latency_cloud_timed[tick - 5: tick + 5]: \n{latency_cloud_timed[tick - 5: tick + 5]}')
@@ -345,7 +350,7 @@ class AW_CUCB:
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_path', 'migration_gains', 'migration_cost']
+            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_path', 'migration_gains', 'migration_cost', 'U', 'L', 'U_min', 'L_max']
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])
