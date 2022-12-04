@@ -194,8 +194,8 @@ class AW_CUCB:
                 
     def LDM(self, tick, trace_data: TraceData, previous_placement_policy, current_placement_policy):
         # convert the placement_policy to the selected cloud providers
-        current_placement_policy_indices = set(np.where(current_placement_policy == 1)[0].tolist())
-        previous_placement_policy_indices = set(np.where(previous_placement_policy == 1)[0].tolist())
+        current_placement_policy_indices = set(np.where(np.array(current_placement_policy) == 1)[0].tolist())
+        previous_placement_policy_indices = set(np.where(np.array(previous_placement_policy) == 1)[0].tolist())
         prepare_migrate_cloud_ids = previous_placement_policy_indices - current_placement_policy_indices
         destination_migrate_cloud_ids = current_placement_policy_indices - previous_placement_policy_indices
         logger.info(f"current_placement_policy: {current_placement_policy}, current_placement_policy_indices: {current_placement_policy_indices}, previous_placement_policy: {previous_placement_policy}, previous_placement_policy_indices: {previous_placement_policy_indices}, prepare_migrate_cloud_ids: {prepare_migrate_cloud_ids}, destination_migrate_cloud_ids: {destination_migrate_cloud_ids}")
