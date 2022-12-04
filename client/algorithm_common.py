@@ -6,6 +6,7 @@ import os
 from os.path import dirname, join, realpath
 import itertools
 import random
+import numpy as np
 
 # serialize and deserialize using jsonpickle or pickle
 # jsonpickle is better for human readable
@@ -215,3 +216,31 @@ class TestData:
 
 def float_to_string(x):
     return f'{x:.8f}' if x != 0 else '0'
+
+def min_except_zero(x):
+    '''
+    x: list, tuple, or numpy array
+    Find the minimum value in x, except 0
+    '''
+    return min([i for i in x if i != 0])
+
+def max_except_zero(x):
+    '''
+    x: list, tuple, or numpy array
+    Find the maximum value in x, except 0
+    '''
+    return max([i for i in x if i != 0])
+
+def argmin_except_zero(x):
+    '''
+    x: list, tuple, or numpy array
+    Find the original index of the minimum value in x from the end to the start position, except 0
+    '''
+    return np.where(x == min_except_zero(x))[0][-1]
+
+def argmax_except_zero(x):
+    '''
+    x: list, tuple, or numpy array
+    Find the original index of the maximum value in x from the end to the start position, except 0
+    '''
+    return np.where(x == max_except_zero(x))[0][-1]

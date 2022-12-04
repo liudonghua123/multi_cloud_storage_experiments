@@ -133,7 +133,7 @@ class AW_CUCB:
                 Tiwi[cloud_id] = np.sum(placement_policy_timed[start_tick: tick + 1, cloud_id], axis=0)
                 latency_cloud_previous = latency_cloud_timed[start_tick: tick + 1, cloud_id]
                 liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_cloud_previous, axis=0)
-                LB[cloud_id] = latency_cloud_previous.max() - np.delete(latency_cloud_previous, np.where(latency_cloud_previous == 0)).min() if self.LB == None else self.LB
+                LB[cloud_id] = max_except_zero(latency_cloud_previous) - min_except_zero(latency_cloud_previous) if self.LB == None else self.LB
                 eit[cloud_id] = LB[cloud_id] * math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
                 
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
@@ -282,11 +282,11 @@ class AW_CUCB:
             
             L[tick][cloud_id] = (tick - 1) / tick * find_exists_value_backward(L, tick-1, cloud_id) + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
             
-            U_min[tick-1, cloud_id] = U[:tick + 1, cloud_id].min()
-            L_max[tick-1, cloud_id] = L[:tick + 1, cloud_id].max()
+            U_min[tick-1, cloud_id] = min_except_zero(U[:tick + 1, cloud_id])
+            L_max[tick-1, cloud_id] = max_except_zero(L[:tick + 1, cloud_id])
             changed_tick = None
             if U[tick, cloud_id] - U_min[tick-1, cloud_id] >= self.b_increase:
-                changed_tick = ChangePoint(np.argmin(U[:tick, cloud_id]) , ChangePoint.INCREASE)
+                changed_tick = ChangePoint(argmin_except_zero(U[:tick, cloud_id]) , ChangePoint.INCREASE)
             if L_max[tick-1, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
@@ -298,7 +298,7 @@ class AW_CUCB:
                     logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
                     logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
                     raise RuntimeError(f'tick: {tick}, could_id: {cloud_id}, U and L both changed, this should not happen')
-                changed_tick = ChangePoint(np.argmax(L[:tick, cloud_id]), ChangePoint.DECREASE)
+                changed_tick = ChangePoint(argmax_except_zero(L[:tick, cloud_id]), ChangePoint.DECREASE)
             # if changed_tick != None:
             #     logger.info(f'tick: {tick - 1}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
@@ -315,12 +315,12 @@ class AW_CUCB:
                 if changed_tick.type == ChangePoint.INCREASE:
                     U[:changed_tick.tick + 1, index] = 0
                     U_min[:changed_tick.tick, index] = 0
-                    U_min[changed_tick.tick, index] = U[changed_tick.tick + 1: tick + 1, index].min()
+                    U_min[changed_tick.tick, index] = min_except_zero(U[changed_tick.tick + 1: tick + 1, index])
                     # latency_cloud_timed[:changed_tick.tick, index] = 0
                 elif changed_tick.type == ChangePoint.DECREASE:
                     L[:changed_tick.tick + 1, index] = 0
                     L_max[:changed_tick.tick, index] = 0
-                    L_max[changed_tick.tick, index] = L[changed_tick.tick + 1: tick + 1, index].max()
+                    L_max[changed_tick.tick, index] = max_except_zero(L[changed_tick.tick + 1: tick + 1, index])
                     # latency_cloud_timed[:changed_tick.tick, index] = 0
             
             # save the U_min and L_max, U and L matrix        
