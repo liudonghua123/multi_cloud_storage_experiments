@@ -38,7 +38,7 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=100, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=1000, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -73,6 +73,7 @@ class AW_CUCB:
         C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
         Tiwi = np.zeros((self.N,))
         liwi = np.zeros((self.N,))
+        LB = np.zeros((self.N,))
         eit = np.zeros((self.N,))
         u_hat_it = np.zeros((self.N,))
         
@@ -114,13 +115,14 @@ class AW_CUCB:
             # make a request to the cloud and save the latency to the latency_cloud_timed
             # if the passed cloud_placements is like [0,0,1,0,1,0], then the returned latency is like [0,0,35.12,0,28.75,0]
             # Use coroutine to make request
-            _, *latency_cloud = asyncio.run(get_latency(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read))
+            # _, *latency_cloud = asyncio.run(get_latency(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read))
             # Use thread to make request
             _, *latency_cloud = get_latency_sync(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read)
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
-            trace_data.placement_policy = '_'.join(map(str, choosed_cloud_ids))
+            trace_data.latency_full = '   '.join(map(float_to_string, latency_cloud))
+            trace_data.placement_policy = '   '.join(map(str, placement_policy))
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
             # update statistics 17
@@ -131,44 +133,51 @@ class AW_CUCB:
                 Tiwi[cloud_id] = np.sum(placement_policy_timed[start_tick: tick + 1, cloud_id], axis=0)
                 latency_cloud_previous = latency_cloud_timed[start_tick: tick + 1, cloud_id]
                 liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_cloud_previous, axis=0)
-                LB = latency_cloud_previous.max() - np.delete(latency_cloud_previous, np.where(latency_cloud_previous == 0)).min() if self.LB == None else self.LB
-                eit[cloud_id] = LB * math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
+                LB[cloud_id] = latency_cloud_previous.max() - np.delete(latency_cloud_previous, np.where(latency_cloud_previous == 0)).min() if self.LB == None else self.LB
+                eit[cloud_id] = LB[cloud_id] * math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
                 
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
                 # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.
                 # however, if some operands are np_array, then np_array=a*b+c will keep the datetype of np_array
                 if trace_data.file_read:
-                    u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[cloud_id]) - eit[cloud_id]
+                    u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id]) - eit[cloud_id]
                 else:
-                    u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id]) - eit[cloud_id]
+                    u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id]) - eit[cloud_id]
             
+            trace_data.LB = '   '.join(map(float_to_string, LB))
+            trace_data.eit = '   '.join(map(float_to_string, eit))
+            trace_data.u_hat_it = '   '.join(map(float_to_string, u_hat_it))
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
             if trace_data.file_read:
-                post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.n * outbound_cost[cloud_id], choosed_cloud_ids))
+                post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))
+                trace_data.post_reward = f'{post_reward}={self.ψ1}*{trace_data.latency}+{self.ψ2}*{sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))}'
+                trace_data.post_cost = sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))
             else: 
-                post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.n * storage_cost[cloud_id], choosed_cloud_ids))
-            trace_data.post_reward = post_reward
+                post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))
+                trace_data.post_reward = f'{post_reward}={self.ψ1}*{trace_data.latency}+{self.ψ2}*{sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))}'
+                trace_data.post_cost = sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))
             logger.info(f"tick: {tick}, post_reward: {post_reward}")
             
             # check whether FM_PHT
             changed_ticks = self.FM_PHT(U, L, U_min, L_max, tick, latency_cloud_timed)
             logger.info(f"tick: {tick}, changed_ticks: {changed_ticks}")
+            # St' = file_metadata[file_id].placement, donote as previous_placement_policy
+            St_hat = self.file_metadata[trace_data.file_id].placement
+            # St = select the top n from N in uit, donote as current_placement_policy
+            St = [1 if i in np.argsort(u_hat_it)[:self.n] else 0 for i in range(self.N)]
+            trace_data.migration_targets = '   '.join(map(str, St))
             if any(changed_ticks):
                 # convert changed_ticks from ChangePoint to int
                 logger.info(f'before convert, changed_ticks: {changed_ticks}')
                 changed_ticks = list(map(lambda x: x.tick if x != None else 0, changed_ticks))
                 logger.info(f'after convert, changed_ticks: {changed_ticks}')
                 # save the change point
-                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '_'.join(map(str, changed_ticks)), '_'.join([str(i) if v != 0 else '0' for i, v in enumerate(changed_ticks)])))
+                self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '   '.join(map(float_to_string, changed_ticks)), '   '.join([str(i) if v != 0 else '0' for i, v in enumerate(changed_ticks)])))
                 # update τ from FM_PHT result
                 τ = np.array(changed_ticks)
                 logger.info(f'tick: {tick}, τ: {τ}')
                 # if read operation
                 if trace_data.file_read:
-                    # St' = file_metadata[file_id].placement, donote as previous_placement_policy
-                    St_hat = self.file_metadata[trace_data.file_id].placement
-                    # St = select the top n from N in uit, donote as current_placement_policy
-                    St = [1 if i in np.argsort(u_hat_it)[:self.n] else 0 for i in range(self.N)]
                     # LDM(St', St), ST: current placement_policy, ST': the previous placement_policy
                     self.LDM(tick, trace_data, St_hat, St)
             # update window size according to τ
@@ -193,9 +202,11 @@ class AW_CUCB:
         migration_gains = 0
         if len(prepare_migrate_cloud_ids) > 0:
             # calculate migration gains
-            migration_gains = sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * (storage_cost[i] - outbound_cost[i]) - read_cost[i], prepare_migrate_cloud_ids)) - sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[i] + write_cost[i], destination_migrate_cloud_ids))
+            migration_gains = sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * (storage_cost[i] - outbound_cost[i]), prepare_migrate_cloud_ids)) - sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[i], destination_migrate_cloud_ids))
             # calculate migration cost
-            migration_cost = sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[i] + read_cost[i], prepare_migrate_cloud_ids)) + sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[i] + write_cost[i], destination_migrate_cloud_ids))
+            migration_cost = sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[i], prepare_migrate_cloud_ids)) + sum(map(lambda i: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[i], destination_migrate_cloud_ids))
+            trace_data.migration_gains = migration_gains
+            trace_data.migration_cost = migration_cost
         if migration_gains > 0:
             logger.info(f'perform migration from {prepare_migrate_cloud_ids} to {destination_migrate_cloud_ids} at tick {tick}')
             # migrate the data from prepare_migrate_cloud_ids (read) to destination_migrate_cloud_ids (write)
@@ -332,7 +343,7 @@ class AW_CUCB:
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'placement_policy', 'post_reward']
+            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_gains', 'migration_cost']
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])

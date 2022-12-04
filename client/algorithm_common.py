@@ -87,8 +87,16 @@ class TraceData:
     file_read: bool = True
     datetime_offset: int = 0
     latency: int = -1
+    latency_full: int = -1
     placement_policy: list[int] = None
+    migration_targets: list[int] = None
+    LB: list[int] = None
+    eit: list[int] = None
+    u_hat_it: list[int] = None
     post_reward: float = 0
+    post_cost: float = 0
+    migration_gains: float = 0
+    migration_cost: float = 0
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
@@ -204,3 +212,6 @@ class TestData:
                 if index % update_tick == 0:
                     spinner.text = f'Processing {index / self.file_input_lines * 100:.2f}%'
         return self.data, self.file_metadata
+
+def float_to_string(x):
+    return f'{x:.8f}' if x != 0 else '0'
