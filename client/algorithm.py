@@ -199,6 +199,7 @@ class AW_CUCB:
         prepare_migrate_cloud_ids = previous_placement_policy_indices - current_placement_policy_indices
         destination_migrate_cloud_ids = current_placement_policy_indices - previous_placement_policy_indices
         logger.info(f"current_placement_policy: {current_placement_policy}, current_placement_policy_indices: {current_placement_policy_indices}, previous_placement_policy: {previous_placement_policy}, previous_placement_policy_indices: {previous_placement_policy_indices}, prepare_migrate_cloud_ids: {prepare_migrate_cloud_ids}, destination_migrate_cloud_ids: {destination_migrate_cloud_ids}")
+        trace_data.migration_path = f'{prepare_migrate_cloud_ids} -> {destination_migrate_cloud_ids}'
         # initial migration gains to 0
         migration_gains = 0
         if len(prepare_migrate_cloud_ids) > 0:
@@ -344,7 +345,7 @@ class AW_CUCB:
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_gains', 'migration_cost']
+            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_path', 'migration_gains', 'migration_cost']
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])

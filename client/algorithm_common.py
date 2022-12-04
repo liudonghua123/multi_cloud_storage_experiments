@@ -97,6 +97,7 @@ class TraceData:
     u_hat_it: list[int] = None
     post_reward: float = 0
     post_cost: float = 0
+    migration_path: str = ''
     migration_gains: float = 0
     migration_cost: float = 0
     
