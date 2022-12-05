@@ -235,6 +235,7 @@ class AW_CUCB:
             return 0
         
         changed_ticks: list[ChangePoint] = []
+        changed_ticks_trace: list[str] = []
         for cloud_id in range(self.N):                
             # skip the cloud_id that is not used
             if latency_timed[tick, cloud_id] == 0:
@@ -260,8 +261,11 @@ class AW_CUCB:
             U_min[tick, cloud_id] = min_except_zero(U[:tick + 1, cloud_id])
             L_max[tick, cloud_id] = max_except_zero(L[:tick + 1, cloud_id])
             changed_tick = None
+            last_changed_tick = self.last_change_tick[cloud_id]
+            changed_tick_trace = ''
             if U[tick, cloud_id] - U_min[tick, cloud_id] >= self.b_increase:
                 changed_tick = ChangePoint(argmin_except_zero(U[:tick+1, cloud_id]) , ChangePoint.INCREASE)
+                changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} U[:tick+1 cloud_id]=U[:{tick+1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(U[:tick+1, cloud_id]) if value != 0]} argmin={changed_tick.tick}"
             if L_max[tick, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
@@ -274,14 +278,17 @@ class AW_CUCB:
                     logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
                     raise RuntimeError(f'tick: {tick}, could_id: {cloud_id}, U and L both changed, this should not happen')
                 changed_tick = ChangePoint(argmax_except_zero(L[:tick+1, cloud_id]), ChangePoint.DECREASE)
+                changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} L[:tick+1 cloud_id]=L[:{tick+1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(L[:tick+1, cloud_id]) if value != 0]} argmax={changed_tick.tick}"
             # if changed_tick != None:
             #     logger.info(f'tick: {tick}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
+            changed_ticks_trace.append(changed_tick_trace)
         
         trace_data.U = '   '.join(map(float_to_string, U[tick]))
         trace_data.L = '   '.join(map(float_to_string, L[tick]))
         trace_data.U_min = '   '.join(map(float_to_string, U_min[tick]))
         trace_data.L_max = '   '.join(map(float_to_string, L_max[tick]))
+        trace_data.changed_ticks_trace = '   '.join(changed_ticks_trace)
         
         # reset FM-PHT
         if any(changed_ticks):

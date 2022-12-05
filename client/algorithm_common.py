@@ -104,6 +104,7 @@ class TraceData:
     L: str = ''
     U_min: str = ''
     L_max: str = ''
+    changed_ticks_trace: str = ''
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
