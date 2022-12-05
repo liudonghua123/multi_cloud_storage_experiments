@@ -66,10 +66,10 @@ class AW_CUCB:
         window_sizes = np.full((self.N,),self.default_window_size)
         placement_policy_timed = np.zeros((self.ticks, self.N))
         latency_cloud_timed = np.zeros((self.ticks, self.N))
-        U = np.zeros((self.ticks + 1, self.N))
-        L = np.zeros((self.ticks + 1, self.N))
-        U_min = np.zeros((self.ticks + 1, self.N))
-        L_max = np.zeros((self.ticks + 1, self.N))
+        U = np.zeros((self.ticks, self.N))
+        L = np.zeros((self.ticks, self.N))
+        U_min = np.zeros((self.ticks, self.N))
+        L_max = np.zeros((self.ticks, self.N))
         C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
         Tiwi = np.zeros((self.N,))
         liwi = np.zeros((self.N,))
@@ -223,11 +223,7 @@ class AW_CUCB:
             self.file_metadata[trace_data.file_id].placement = current_placement_policy
             self.migration_records.append(MigrationRecord(trace_data.file_id, tick, datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S.%f'), latency, migration_gains, migration_cost))
                  
-    def FM_PHT(self, trace_data, U, L, U_min, L_max, tick, latency_cloud_timed):
-        tick += 1
-        # logger.info(f'U_min:tick,  {U_min}tick, , L_max: {L_max}')
-        # U[0]={0}, L[0]={0}, the tick start from 1
-        
+    def FM_PHT(self, trace_data, U, L, U_min, L_max, tick, latency_timed):        
         def find_exists_value_backward(array, row, column):
             while row >= 0:
                 if array[row][column] != 0:
@@ -236,47 +232,57 @@ class AW_CUCB:
             return 0
         
         changed_ticks: list[ChangePoint] = []
-        for cloud_id in range(self.N):
+        for cloud_id in range(self.N):                
             # skip the cloud_id that is not used
-            if latency_cloud_timed[tick - 1, cloud_id] == 0:
+            if latency_timed[tick, cloud_id] == 0:
                 changed_ticks.append(None)
                 continue
-            latency_cloud = latency_cloud_timed[self.last_change_tick[cloud_id]:tick, cloud_id]
-            latency_cloud_exist = np.delete(latency_cloud, np.where(latency_cloud == 0))
             
-            U[tick][cloud_id] = (tick - 1) / tick * find_exists_value_backward(U, tick-1, cloud_id) + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) - self.δ)
+            # calculate the first tick, U, L initialized to 0, so intialize the U,L,U_min,L_max,changed_tick value for the first tick 
+            if tick == 0:
+                U[tick][cloud_id] = - self.δ
+                L[tick][cloud_id] = self.δ
+                U_min[tick, cloud_id] = U[tick][cloud_id]
+                L_max[tick, cloud_id] = L[tick][cloud_id]
+                changed_ticks.append(None)
+                continue
             
-            L[tick][cloud_id] = (tick - 1) / tick * find_exists_value_backward(L, tick-1, cloud_id) + (latency_cloud_exist[-1] - np.average(latency_cloud_exist) + self.δ)
-            
-            U_min[tick-1, cloud_id] = min_except_zero(U[:tick + 1, cloud_id])
-            L_max[tick-1, cloud_id] = max_except_zero(L[:tick + 1, cloud_id])
+            # calculate the rest ticks
+            latency = latency_timed[self.last_change_tick[cloud_id]:tick, cloud_id]
+            latency_except_zero = np.delete(latency, np.where(latency == 0))
+            latency_current = latency_timed[tick, cloud_id]
+            latency_average = np.average(latency_except_zero)
+            U[tick][cloud_id] = tick / (tick + 1) * find_exists_value_backward(U, tick, cloud_id) + (latency_current - latency_average - self.δ)
+            L[tick][cloud_id] = tick / (tick + 1) * find_exists_value_backward(L, tick, cloud_id) + (latency_current - latency_average + self.δ)
+            U_min[tick, cloud_id] = min_except_zero(U[:tick + 1, cloud_id])
+            L_max[tick, cloud_id] = max_except_zero(L[:tick + 1, cloud_id])
             changed_tick = None
-            if U[tick, cloud_id] - U_min[tick-1, cloud_id] >= self.b_increase:
-                changed_tick = ChangePoint(argmin_except_zero(U[:tick, cloud_id]) , ChangePoint.INCREASE)
-            if L_max[tick-1, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
+            if U[tick, cloud_id] - U_min[tick, cloud_id] >= self.b_increase:
+                changed_tick = ChangePoint(argmin_except_zero(U[:tick+1, cloud_id]) , ChangePoint.INCREASE)
+            if L_max[tick, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
                     self.save_matrix_as_csv(U_min, 'U_min.csv')
                     self.save_matrix_as_csv(L_max, 'L_max.csv')
                     self.save_matrix_as_csv(U, 'U.csv')
                     self.save_matrix_as_csv(L, 'L.csv')
-                    logger.info(f'latency_cloud_timed[self.last_change_tick[cloud_id]:tick]: \n{latency_cloud_timed[self.last_change_tick[cloud_id]:tick]}')
+                    logger.info(f'latency_timed[self.last_change_tick[cloud_id]:tick]: \n{latency_timed[self.last_change_tick[cloud_id]:tick]}')
                     logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
                     logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
                     raise RuntimeError(f'tick: {tick}, could_id: {cloud_id}, U and L both changed, this should not happen')
-                changed_tick = ChangePoint(argmax_except_zero(L[:tick, cloud_id]), ChangePoint.DECREASE)
+                changed_tick = ChangePoint(argmax_except_zero(L[:tick+1, cloud_id]), ChangePoint.DECREASE)
             # if changed_tick != None:
-            #     logger.info(f'tick: {tick - 1}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
+            #     logger.info(f'tick: {tick}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
         
         trace_data.U = '   '.join(map(float_to_string, U[tick]))
         trace_data.L = '   '.join(map(float_to_string, L[tick]))
-        trace_data.U_min = '   '.join(map(float_to_string, U_min[tick-1]))
-        trace_data.L_max = '   '.join(map(float_to_string, L_max[tick-1]))
+        trace_data.U_min = '   '.join(map(float_to_string, U_min[tick]))
+        trace_data.L_max = '   '.join(map(float_to_string, L_max[tick]))
         
         # reset FM-PHT
         if any(changed_ticks):
-            logger.info(f'tick: {tick - 1}, current latency_cloud: {latency_cloud_timed[tick - 1]}, latency_cloud_timed[tick - 5: tick + 5]: \n{latency_cloud_timed[tick - 5: tick + 5]}')
+            logger.info(f'tick: {tick}, current latency: {latency_timed[tick]}, latency_timed[tick - 5: tick + 5]: \n{latency_timed[tick - 5: tick + 5]}')
             
             for index, changed_tick in enumerate(changed_ticks):
                 if changed_tick == None:
@@ -284,15 +290,13 @@ class AW_CUCB:
                 
                 self.last_change_tick[index] = changed_tick.tick
                 if changed_tick.type == ChangePoint.INCREASE:
-                    U[:changed_tick.tick + 1, index] = 0
+                    U[:changed_tick.tick, index] = 0
                     U_min[:changed_tick.tick, index] = 0
-                    U_min[changed_tick.tick, index] = min_except_zero(U[changed_tick.tick + 1: tick + 1, index])
-                    # latency_cloud_timed[:changed_tick.tick, index] = 0
+                    U_min[changed_tick.tick, index] = min_except_zero(U[changed_tick.tick: tick + 1, index])
                 elif changed_tick.type == ChangePoint.DECREASE:
-                    L[:changed_tick.tick + 1, index] = 0
+                    L[:changed_tick.tick, index] = 0
                     L_max[:changed_tick.tick, index] = 0
-                    L_max[changed_tick.tick, index] = max_except_zero(L[changed_tick.tick + 1: tick + 1, index])
-                    # latency_cloud_timed[:changed_tick.tick, index] = 0
+                    L_max[changed_tick.tick, index] = max_except_zero(L[changed_tick.tick: tick + 1, index])
             
             # save the U_min and L_max, U and L matrix        
             # self.save_matrix_as_csv(U_min, 'U_min.csv')
