@@ -264,8 +264,10 @@ class AW_CUCB:
             last_changed_tick = self.last_change_tick[cloud_id]
             changed_tick_trace = ''
             if U[tick, cloud_id] - U_min[tick, cloud_id] >= self.b_increase:
-                changed_tick = ChangePoint(argmin_except_zero(U[:tick + 1, cloud_id]) , ChangePoint.INCREASE)
-                changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} U[:tick + 1 cloud_id]=U[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(U[:tick + 1, cloud_id]) if value != 0]} argmin={changed_tick.tick}"
+                # changed_tick = ChangePoint(argmin_except_zero(U[:tick + 1, cloud_id]) , ChangePoint.INCREASE)
+                # changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} U[:tick + 1 cloud_id]=U[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(U[:tick + 1, cloud_id]) if value != 0]} argmin={changed_tick.tick}"
+                changed_tick = ChangePoint(tick, ChangePoint.INCREASE)
+                changed_tick_trace = f"U[{tick}, {cloud_id}] - U_min[{tick}, {cloud_id}]={U[tick, cloud_id] - U_min[tick, cloud_id]}"
             if L_max[tick, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
@@ -277,8 +279,10 @@ class AW_CUCB:
                     logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
                     logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
                     raise RuntimeError(f'tick: {tick}, could_id: {cloud_id}, U and L both changed, this should not happen')
-                changed_tick = ChangePoint(argmax_except_zero(L[:tick + 1, cloud_id]), ChangePoint.DECREASE)
-                changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} L[:tick + 1 cloud_id]=L[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(L[:tick + 1, cloud_id]) if value != 0]} argmax={changed_tick.tick}"
+                # changed_tick = ChangePoint(argmax_except_zero(L[:tick + 1, cloud_id]), ChangePoint.DECREASE)
+                # changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} L[:tick + 1 cloud_id]=L[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(L[:tick + 1, cloud_id]) if value != 0]} argmax={changed_tick.tick}"
+                changed_tick = ChangePoint(tick, ChangePoint.DECREASE)
+                changed_tick_trace = f"L_max[{tick}, {cloud_id}] - L[{tick}, {cloud_id}]={L_max[tick, cloud_id] - L[tick, cloud_id]}"
             # if changed_tick != None:
             #     logger.info(f'tick: {tick}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
