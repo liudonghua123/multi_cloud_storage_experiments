@@ -119,6 +119,7 @@ class AW_CUCB:
             # Use coroutine to make request
             # _, *latency_cloud = asyncio.run(get_latency(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read))
             # Use thread to make request
+            trace_data.request_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             _, *latency_cloud = get_latency_sync(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read)
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
