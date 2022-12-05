@@ -252,7 +252,7 @@ class AW_CUCB:
                 continue
             
             # calculate the rest ticks
-            latency = latency_timed[self.last_change_tick[cloud_id]:tick, cloud_id]
+            latency = latency_timed[self.last_change_tick[cloud_id]:tick + 1, cloud_id]
             latency_except_zero = np.delete(latency, np.where(latency == 0))
             latency_current = latency_timed[tick, cloud_id]
             latency_average = np.average(latency_except_zero)
@@ -302,11 +302,11 @@ class AW_CUCB:
                 if changed_tick.type == ChangePoint.INCREASE:
                     U[:changed_tick.tick, index] = 0
                     U_min[:changed_tick.tick, index] = 0
-                    U_min[changed_tick.tick, index] = min_except_zero(U[changed_tick.tick: tick + 1, index])
+                    # U_min[changed_tick.tick, index] = min_except_zero(U[changed_tick.tick: tick + 1, index])
                 elif changed_tick.type == ChangePoint.DECREASE:
                     L[:changed_tick.tick, index] = 0
                     L_max[:changed_tick.tick, index] = 0
-                    L_max[changed_tick.tick, index] = max_except_zero(L[changed_tick.tick: tick + 1, index])
+                    # L_max[changed_tick.tick, index] = max_except_zero(L[changed_tick.tick: tick + 1, index])
             
             # save the U_min and L_max, U and L matrix        
             # self.save_matrix_as_csv(U_min, 'U_min.csv')
