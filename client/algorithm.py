@@ -10,6 +10,7 @@ import asyncio
 import fire
 import csv
 from datetime import datetime
+from ordered_set import OrderedSet
 from algorithm_common import *
 
 sys.path.append(dirname(dirname(realpath(__file__))))
@@ -347,21 +348,23 @@ class AW_CUCB:
         # save the migration records
         with open('results/migration_records.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['file_id', 'tick', 'start_time', 'latency', 'migration_gains', 'migration_cost']
+            # {*[]} is empty set, same as set(), {*()}, {*{}}
+            # customization the exclude list like {'id'}
+            header = OrderedSet(MigrationRecord.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
             for migration_record in self.migration_records:
                 writer.writerow([getattr(migration_record, column) for column in header])
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['timestamp', 'file_id', 'file_size', 'file_read', 'latency', 'latency_full', 'placement', 'placement_policy', 'migration_targets' ,'post_reward', 'post_cost', 'LB', 'eit', 'u_hat_it', 'migration_path', 'migration_gains', 'migration_cost', 'U', 'L', 'U_min', 'L_max']
+            header = OrderedSet(TraceData.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
             for trace_data in self.data:
                 writer.writerow([getattr(trace_data, column) for column in header])
         # save the change points
         with open('results/change_points.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
-            header = ['tick', 'datetime', 'change_point_tick', 'change_cloud_providers']
+            header = OrderedSet(ChangePointRecord.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
             for change_point_record in self.change_point_records:
                 writer.writerow([getattr(change_point_record, column) for column in header])

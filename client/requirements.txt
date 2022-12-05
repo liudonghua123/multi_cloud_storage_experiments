@@ -16,3 +16,7 @@ walrus
 halo
 # https://mplcursors.readthedocs.io/en/stable/examples/hover.html
 mplcursors
+
+# https://github.com/rspeer/ordered-set/blob/master/ordered_set/__init__.py
+# from ordered_set import OrderedSet
+ordered-set
