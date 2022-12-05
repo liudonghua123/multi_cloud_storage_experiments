@@ -221,43 +221,7 @@ class AW_CUCB:
             # update the file_metadata
             logger.info(f'update the file_metadata at tick {tick}')
             self.file_metadata[trace_data.file_id].placement = current_placement_policy
-            self.migration_records.append(MigrationRecord(trace_data.file_id, tick, datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S.%f'), latency, migration_cost, migration_gains))
- 
-    def test_FM_PHT(self, test_csv_file: str):
-        # parse the test csv file
-        latency_cloud_timed = []
-        with open(test_csv_file, 'r') as f:
-            reader = csv.reader(f)
-            # skip the header
-            next(reader)
-            for row in reader:
-                latency_cloud_timed.append(list(map(float, row)))
-        # invoke FM_PHT
-        ticks = len(latency_cloud_timed)
-        self.N = 4
-        latency_cloud_timed = np.array(latency_cloud_timed)
-        U = np.zeros((ticks + 1, self.N))
-        L = np.zeros((ticks + 1, self.N))
-        U_min = np.zeros((ticks + 1, self.N))
-        L_max = np.zeros((ticks + 1, self.N))
-        detected_ticks = []
-        # self.δ = 0.9    
-        for tick in range(ticks):
-            changed_ticks = self.FM_PHT(U, L, U_min, L_max, tick, latency_cloud_timed)
-            if any(changed_ticks):
-                detected_ticks.append(tick)
-                logger.info(f'tick: {tick}, changed_ticks: {changed_ticks}')
-        logger.info(f'self.δ: {self.δ}, detected_ticks count: {len(detected_ticks)}, {detected_ticks}')
-        self.save_matrix_as_csv(U_min, 'U_min.csv')
-        self.save_matrix_as_csv(L_max, 'L_max.csv')
-        self.save_matrix_as_csv(U, 'U.csv')
-        self.save_matrix_as_csv(L, 'L.csv')
-        
-    # save the matrix as csv file
-    def save_matrix_as_csv(self, matrix, file_name):
-        with open(file_name, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerows(matrix)
+            self.migration_records.append(MigrationRecord(trace_data.file_id, tick, datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S.%f'), latency, migration_gains, migration_cost))
                  
     def FM_PHT(self, trace_data, U, L, U_min, L_max, tick, latency_cloud_timed):
         tick += 1
@@ -337,6 +301,42 @@ class AW_CUCB:
             # self.save_matrix_as_csv(L, 'L.csv')
                     
         return changed_ticks
+ 
+    def test_FM_PHT(self, test_csv_file: str):
+        # parse the test csv file
+        latency_cloud_timed = []
+        with open(test_csv_file, 'r') as f:
+            reader = csv.reader(f)
+            # skip the header
+            next(reader)
+            for row in reader:
+                latency_cloud_timed.append(list(map(float, row)))
+        # invoke FM_PHT
+        ticks = len(latency_cloud_timed)
+        self.N = 4
+        latency_cloud_timed = np.array(latency_cloud_timed)
+        U = np.zeros((ticks + 1, self.N))
+        L = np.zeros((ticks + 1, self.N))
+        U_min = np.zeros((ticks + 1, self.N))
+        L_max = np.zeros((ticks + 1, self.N))
+        detected_ticks = []
+        # self.δ = 0.9    
+        for tick in range(ticks):
+            changed_ticks = self.FM_PHT(U, L, U_min, L_max, tick, latency_cloud_timed)
+            if any(changed_ticks):
+                detected_ticks.append(tick)
+                logger.info(f'tick: {tick}, changed_ticks: {changed_ticks}')
+        logger.info(f'self.δ: {self.δ}, detected_ticks count: {len(detected_ticks)}, {detected_ticks}')
+        self.save_matrix_as_csv(U_min, 'U_min.csv')
+        self.save_matrix_as_csv(L_max, 'L_max.csv')
+        self.save_matrix_as_csv(U, 'U.csv')
+        self.save_matrix_as_csv(L, 'L.csv')
+        
+    # save the matrix as csv file
+    def save_matrix_as_csv(self, matrix, file_name):
+        with open(file_name, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerows(matrix)
         
         
     def save_result(self):
