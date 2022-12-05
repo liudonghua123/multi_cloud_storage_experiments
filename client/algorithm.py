@@ -64,7 +64,7 @@ class AW_CUCB:
         
     def processing(self):
         # initialization
-        τ = np.full((self.N,),1)
+        τ = np.full((self.N,),0)
         window_sizes = np.full((self.N,),self.default_window_size)
         placement_policy_timed = np.zeros((self.ticks, self.N))
         latency_cloud_timed = np.zeros((self.ticks, self.N))
@@ -187,7 +187,7 @@ class AW_CUCB:
                     self.LDM(tick, trace_data, St_hat, St)
             # update window size according to τ
             logger.info(f'tick: {tick}, before update window_sizes: {window_sizes}, τ: {τ}')
-            window_sizes = np.minimum(self.default_window_size, tick + 1 - τ + 1)
+            window_sizes = np.minimum(self.default_window_size, tick - τ + 1)
             self.window_sizes_timed[tick] = window_sizes
             logger.info(f'tick: {tick}, after update window_sizes: {window_sizes}, τ: {τ}')
             print(f"tick: {tick}, window_sizes: {window_sizes}")
