@@ -177,7 +177,8 @@ class AW_CUCB:
                 # save the change point
                 self.change_point_records.append(ChangePointRecord(tick, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), '   '.join(map(str, changed_ticks)), '   '.join([str(i) if v != 0 else '0' for i, v in enumerate(changed_ticks)])))
                 # update τ from FM_PHT result
-                τ = np.array(changed_ticks)
+                # update τ, overwrite the previous τ if the corresponding changed_ticks is true
+                τ = np.array([value if value != 0 else τ[index] for index, value in enumerate(changed_ticks)])
                 logger.info(f'tick: {tick}, τ: {τ}')
                 # if read operation
                 if trace_data.file_read:
