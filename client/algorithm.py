@@ -59,6 +59,7 @@ class AW_CUCB:
         self.migration_records: list[MigrationRecord] = []
         self.change_point_records: list[ChangePointRecord] = []
         self.last_change_tick: list[int] = [0] * self.N
+        self.window_sizes_timed = np.zeros((self.ticks, self.N))
         
         
     def processing(self):
@@ -185,6 +186,7 @@ class AW_CUCB:
             # update window size according to τ
             logger.info(f'tick: {tick}, before update window_sizes: {window_sizes}, τ: {τ}')
             window_sizes = np.minimum(self.default_window_size, tick + 1 - τ + 1)
+            self.window_sizes_timed[tick] = window_sizes
             logger.info(f'tick: {tick}, after update window_sizes: {window_sizes}, τ: {τ}')
             print(f"tick: {tick}, window_sizes: {window_sizes}")
             
@@ -368,6 +370,7 @@ class AW_CUCB:
             writer.writerow(header)
             for change_point_record in self.change_point_records:
                 writer.writerow([getattr(change_point_record, column) for column in header])
+        self.save_matrix_as_csv(self.window_sizes_timed, 'results/window_sizes_timed.csv')
     
     
 def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt')):
