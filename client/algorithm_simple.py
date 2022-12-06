@@ -21,7 +21,7 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
     
 
 class EACH_SIMPLE:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=0.5, ψ2=0.5, ξ=0.5, b_increase=0.4, b_decrease=0.3, δ=0.05, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=1000, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
