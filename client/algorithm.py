@@ -91,32 +91,36 @@ class AW_CUCB:
                 file_metadata = self.file_metadata[trace_data.file_id]
                 file_metadata.placement = placement
                 placement_policy = placement
-            # ulization phase
-            else:
+            # ulization phase, read opeartion
+            elif trace_data.file_read:
                 # sort uit
                 sorted_u_hat_it = np.argsort(u_hat_it)
                 # Rank uˆi(t) in ascending order; 
                 # Select the top n arms to added into St for write operation
                 # Select the top k arms based on placement to added into St for read operation
-                if trace_data.file_read:
-                    # read operation
-                    placement = self.file_metadata[trace_data.file_id].placement
-                    # raise Exception when placement is empty
-                    if sum(placement) != self.n:
-                        raise Exception(f'Invalid placement {placement} for tick {tick}, trace_data: {trace_data}')
-                    # if placement is [0,1,1,0,1,0] and sorted_u_hat_it is [0,1,2,3,4,5], then the top k arms are [1,2], placement_policy is [0,1,1,0,0,0]
-                    placement_policy = np.zeros((self.N,), dtype = int)
-                    k = self.k
-                    for i in sorted_u_hat_it:
-                        if placement[i] == 1:
-                            placement_policy[i] = 1
-                            k -= 1
-                            if k == 0:
-                                break
-                    logger.info(f'placement: {placement}, sorted_u_hat_it: {sorted_u_hat_it}, placement_policy: {placement_policy}')
-                else:
-                    # write operation
-                    placement_policy = [1 if i in sorted_u_hat_it[:self.n] else 0 for i in range(self.N)]
+                # read operation
+                placement = self.file_metadata[trace_data.file_id].placement
+                # raise Exception when placement is empty
+                if sum(placement) != self.n:
+                    raise Exception(f'Invalid placement {placement} for tick {tick}, trace_data: {trace_data}')
+                # if placement is [0,1,1,0,1,0] and sorted_u_hat_it is [0,1,2,3,4,5], then the top k arms are [1,2], placement_policy is [0,1,1,0,0,0]
+                placement_policy = [0] * self.N
+                k = self.k
+                for i in sorted_u_hat_it:
+                    if placement[i] == 1:
+                        placement_policy[i] = 1
+                        k -= 1
+                        if k == 0:
+                            break
+                logger.info(f'placement: {placement}, sorted_u_hat_it: {sorted_u_hat_it}, placement_policy: {placement_policy}')
+            # ulization phase, write opeartion
+            else:
+                # use top n of sorted u't
+                placement_policy = [1 if i in sorted_u_hat_it[:self.n] else 0 for i in range(self.N)]
+                if self.file_metadata.get(trace_data.file_id) == None:
+                    self.file_metadata[trace_data.file_id] = FileMetadata(trace_data.offset, trace_data.file_size)
+                file_metadata = self.file_metadata[trace_data.file_id]
+                file_metadata.placement = placement_policy
                     
             # do request to get latency
             choosed_cloud_ids = [i for i, x in enumerate(placement_policy) if x == 1]
@@ -127,6 +131,12 @@ class AW_CUCB:
             # Use thread to make request
             trace_data.request_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             _, *latency_cloud = get_latency_sync(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read)
+            
+            # update the metadata placement for write operation
+            if not trace_data.file_read:
+                file_metadata = self.file_metadata[trace_data.file_id]
+                file_metadata.placement = placement_policy
+                
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
