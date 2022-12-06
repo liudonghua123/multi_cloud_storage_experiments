@@ -153,7 +153,9 @@ class AW_CUCB:
                 latency_cloud_previous = latency_cloud_timed[start_tick: tick + 1, cloud_id]
                 liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_cloud_previous, axis=0)
                 LB[cloud_id] = max_except_zero(latency_cloud_previous) - min_except_zero(latency_cloud_previous) if self.LB == None else self.LB
-                eit[cloud_id] = math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
+                # eit[cloud_id] = math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
+                # e_X_phw(:,i)=sqrt(XI*log(t-rowindex(1,i))/total_t_phw(i));
+                eit[cloud_id] = math.sqrt(self.ξ * math.log(tick - find_last_value_index(placement_policy_timed[:tick, cloud_id]), math.e) / Tiwi[cloud_id])
                 
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
                 # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.

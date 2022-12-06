@@ -244,3 +244,10 @@ def argmax_except_zero(x):
     Find the original index of the maximum value in x from the end to the start position, except 0
     '''
     return np.where(x == max_except_zero(x))[0][-1]
+
+def find_last_value_index(x):
+    '''
+    x: list, tuple, or numpy array
+    Find the index of the last non-zero value in x from the end to the start position
+    '''
+    return np.where(x != 0)[0][-1] if np.count_nonzero(x) > 0 else -1
