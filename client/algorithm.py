@@ -78,13 +78,19 @@ class AW_CUCB:
         LB = np.zeros((self.N,))
         eit = np.zeros((self.N,))
         u_hat_it = np.zeros((self.N,))
+        initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
         
         for tick, trace_data in enumerate(self.data):
             
             # exploration phase
             if tick < C_N_n_count:
-                # write operation
-                placement_policy = self.file_metadata[trace_data.file_id].placement
+                # use full combinations matrix
+                placement = [1 if i in initial_optimized_placement[tick] else 0 for i in range(self.N)]
+                if self.file_metadata.get(trace_data.file_id) == None:
+                    self.file_metadata[trace_data.file_id] = FileMetadata(trace_data.offset, trace_data.file_size)
+                file_metadata = self.file_metadata[trace_data.file_id]
+                file_metadata.placement = placement
+                placement_policy = placement
             # ulization phase
             else:
                 # sort uit

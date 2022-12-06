@@ -40,7 +40,7 @@ init_request_retries_session(cloud_providers, max_retries)
 class FileMetadata:
     offset: int
     size: int
-    placement: list[int]
+    placement: list[int] = None
     
 @dataclass
 class MigrationRecord:
@@ -195,27 +195,19 @@ class TestData:
                 # size = 1024 * 1024 * 10
                 read = operation_type == 'Read'
                 initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
-                # if the file_id is not in the file_metadata, add it to the file_metadata
-                if self.file_metadata.get(file_id) is None:
-                    self.file_metadata[file_id] = FileMetadata(offset, size, None)
-                # update placement of file_metadata, if the original placement is None and the new placement is not None
-                file_metadata = self.file_metadata[file_id]
-                if file_metadata.placement is None:
-                    # 1. The placement for read will be randomly selected
-                    # 2. The placement for write: 
-                    # 2.1 Overwrite the first C_N_n placement for write operation, using the initial_optimized_placement
-                    # 2.2 The rest placement for write will be not set empty [], maybe the last operation for such file is write, look 383848448,8192, select by algotithm
-                    if write_processed_count < len(initial_optimized_placement):
-                        read = False
-                        placement = [1 if i in initial_optimized_placement[write_processed_count] else 0 for i in range(self.N)]
-                        write_processed_count += 1
-                    elif read:
+                # For the first len(initial_optimized_placement) trace data, overwrite write operation ignore the same file_id
+                # Not need metadata info
+                if index < len(initial_optimized_placement):
+                    read = False
+                # For the rest trace data, only set metadata for read operation.
+                elif read:
+                    # create file_metadata if does not exists
+                    if self.file_metadata.get(file_id) is None:
+                        # 1. The placement for read will be randomly selected
                         placement = random.choice(initial_optimized_placement)
                         placement = [1 if i in placement else 0 for i in range(self.N)]
-                        if (read or index < len(initial_optimized_placement)) and (sum(placement) != self.n):
-                            raise Exception(f'Invalid placement {placement} for index, line: {index}, {line}, read: {read}, n: {self.n}, k: {self.k}, N: {self.N}')
-                    if placement is not None:
-                        file_metadata.placement = placement
+                        logger.info(f'set file_metadata.placement: ${placement} for file_id: {file_id}, read: {read}')
+                        self.file_metadata[file_id] = FileMetadata(offset, size, placement)
                         
                 self.data.append(TraceData(timestamp, file_id, offset, size, read, timestamp - self.initial_timestamp))
                 if index % update_tick == 0:
