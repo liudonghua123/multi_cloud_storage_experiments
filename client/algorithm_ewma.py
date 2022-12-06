@@ -92,7 +92,7 @@ class EACH_EWMA:
           logger.warning(f'initial current_ewma_latency[{cloud_id}]')
           current_ewma_latency[cloud_id] = latency_cloud[cloud_id]
 
-      logger.info(f'current_ewma_latency: {current_ewma_latency}')
+      logger.info(f'current_ewma_latency: {current_ewma_latency.tolist()}')
       if trace_data.file_read:
         post_reward = self.ψ1 * trace_data.latency + self.ψ2 * \
           sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 /
