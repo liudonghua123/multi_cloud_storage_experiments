@@ -167,15 +167,17 @@ class AW_CUCB:
             
             trace_data.LB = '   '.join(map(float_to_string, LB))
             trace_data.eit = '   '.join(map(float_to_string, eit))
-            trace_data.u_hat_it = '   '.join(map(float_to_string, u_hat_it))
+            trace_data.u_hat_it = u_hat_it.tolist()
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
             if trace_data.file_read:
                 post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))
-                trace_data.post_reward = f'{post_reward}={self.ψ1}*{trace_data.latency}+{self.ψ2}*{sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))}'
+                # trace_data.post_reward = f'{post_reward}={self.ψ1}*{trace_data.latency}+{self.ψ2}*{sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))}'
+                trace_data.post_reward = post_reward
                 trace_data.post_cost = sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))
             else: 
                 post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))
-                trace_data.post_reward = f'{post_reward}={self.ψ1}*{trace_data.latency}+{self.ψ2}*{sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))}'
+                # trace_data.post_reward = f'{post_reward}={self.ψ1}*{trace_data.latency}+{self.ψ2}*{sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))}'
+                trace_data.post_reward = post_reward
                 trace_data.post_cost = sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id], choosed_cloud_ids))
             logger.info(f"tick: {tick}, post_reward: {post_reward}")
             
@@ -387,6 +389,19 @@ class AW_CUCB:
             writer.writerow(header)
             for migration_record in self.migration_records:
                 writer.writerow([getattr(migration_record, column) for column in header])
+        # update xxx_accumulated_average
+        latency__accumulated_average = calculate_accumulated_average([trace_data.latency for trace_data in self.data if trace_data.tick != -1])
+        post_reward_accumulated_average = calculate_accumulated_average([trace_data.post_reward for trace_data in self.data if trace_data.tick != -1])
+        post_cost_accumulated_average = calculate_accumulated_average([trace_data.post_cost for trace_data in self.data if trace_data.tick != -1])
+        u_hat_it_accumulated_average = calculate_accumulated_average_matrix([trace_data.u_hat_it for trace_data in self.data if trace_data.tick != -1])
+        post_cost_accumulation = calculate_accumulation([trace_data.post_cost for trace_data in self.data if trace_data.tick != -1])
+        for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
+            trace_data.latency_accumulated_average = latency__accumulated_average[index]
+            trace_data.post_reward_accumulated_average = post_reward_accumulated_average[index]
+            trace_data.post_cost_accumulated_average = post_cost_accumulated_average[index]
+            trace_data.u_hat_it_accumulated_average = u_hat_it_accumulated_average[index]
+            trace_data.post_cost_accumulation = post_cost_accumulation[index]
+            # trace_data.u_hat_it = '   '.join(map(float_to_string, trace_data.u_hat_it))
         # save the trace data with latency
         with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)

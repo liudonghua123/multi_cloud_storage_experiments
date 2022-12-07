@@ -80,7 +80,8 @@ class ChangePoint:
     
 @dataclass
 class TraceData:
-    tick: int = 0
+    # if the tick is -1, it means the data is not initialized
+    tick: int = -1
     # timestamp in seconds
     timestamp: int = 0
     file_id: int = 0
@@ -107,6 +108,11 @@ class TraceData:
     L_max: str = ''
     changed_ticks_trace: str = ''
     request_datetime: str = ''
+    latency_accumulated_average: int = -1
+    post_reward_accumulated_average: float = 0
+    post_cost_accumulated_average: float = 0
+    u_hat_it_accumulated_average : list[float] = None
+    post_cost_accumulation: float = 0
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
@@ -252,3 +258,24 @@ def find_last_value_index(x):
     Find the index of the last non-zero value in x from the end to the start position
     '''
     return np.where(x != 0)[0][-1] if np.count_nonzero(x) > 0 else -1
+
+def calculate_accumulated_average(x):
+    '''
+    x: list, tuple, or numpy array
+    Calculate the accumulated average of x
+    '''
+    return (np.cumsum(x) / np.arange(1, len(x) + 1)).tolist()
+
+def calculate_accumulated_average_matrix(x):
+    '''
+    x: two demensional list, tuple, or numpy array
+    Calculate the accumulation of x
+    '''
+    return np.cumsum(x, axis=0).tolist()
+
+def calculate_accumulation(x):
+    '''
+    x: list, tuple, or numpy array
+    Calculate the accumulation of x
+    '''
+    return np.cumsum(x).tolist()
