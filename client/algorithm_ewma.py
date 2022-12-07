@@ -127,7 +127,7 @@ class EACH_EWMA:
       header = ['timestamp', 'file_id', 'file_size', 'file_read', 'placement_policy',
                 'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 'latency_accumulated_average', 'post_reward_accumulated_average', 'post_cost_accumulated_average', 'post_cost_accumulation']
       writer.writerow(header)
-      for trace_data in self.data:
+      for trace_data in filter(lambda trace_data: trace_data.tick != -1, self.data):
         writer.writerow([getattr(trace_data, column) for column in header])
 
 

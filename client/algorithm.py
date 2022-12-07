@@ -407,7 +407,7 @@ class AW_CUCB:
             writer = csv.writer(csvfile)
             header = OrderedSet(TraceData.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
-            for index, trace_data in enumerate(self.data):
+            for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
                 writer.writerow([getattr(trace_data, column) for column in header])
         # save the change points
         with open('results/change_points.csv', 'w', newline='') as csvfile:
