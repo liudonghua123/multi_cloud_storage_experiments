@@ -35,6 +35,7 @@ class EACH_EWMA:
     current_ewma_latency = np.zeros((self.N,))
 
     for tick, trace_data in enumerate(self.data):
+      trace_data.tick = tick
       logger.info(f"[tick: {tick}]{'-'*20}")
       # make the first two placement_policy full use of the clould providers
       if tick == 0:

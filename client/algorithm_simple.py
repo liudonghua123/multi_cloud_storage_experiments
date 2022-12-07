@@ -36,6 +36,7 @@ class EACH_SIMPLE:
     current_simple_latency = np.full((self.N,), np.inf)
 
     for tick, trace_data in enumerate(self.data):
+      trace_data.tick = tick
       logger.info(f"[tick: {tick}]{'-'*20}")
       # initial phase
 

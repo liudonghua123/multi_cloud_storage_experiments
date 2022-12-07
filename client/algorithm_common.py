@@ -80,11 +80,12 @@ class ChangePoint:
     
 @dataclass
 class TraceData:
+    tick: int = 0
     # timestamp in seconds
-    timestamp: int
-    file_id: int
-    offset: int
-    file_size: int
+    timestamp: int = 0
+    file_id: int = 0
+    offset: int = 0
+    file_size: int = 0
     file_read: bool = True
     datetime_offset: int = 0
     latency: int = -1
