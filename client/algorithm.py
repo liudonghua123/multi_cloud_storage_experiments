@@ -214,6 +214,7 @@ class AW_CUCB:
             logger.info(f'tick: {tick}, before update window_sizes: {window_sizes}, τ: {τ}')
             window_sizes = np.minimum(self.default_window_size, tick - τ + 1)
             self.window_sizes_timed[tick] = window_sizes
+            trace_data.window_sizes = window_sizes.tolist()
             logger.info(f'tick: {tick}, after update window_sizes: {window_sizes}, τ: {τ}')
             print(f"tick: {tick}, window_sizes: {window_sizes}")
             
@@ -421,7 +422,7 @@ class AW_CUCB:
             writer.writerow(header)
             for change_point_record in self.change_point_records:
                 writer.writerow([getattr(change_point_record, column) for column in header])
-        self.save_matrix_as_csv(self.window_sizes_timed, 'results/window_sizes_timed.csv')
+        # self.save_matrix_as_csv(self.window_sizes_timed, 'results/window_sizes_timed.csv')
     
     
 def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt')):

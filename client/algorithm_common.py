@@ -113,6 +113,7 @@ class TraceData:
     post_cost_accumulated_average: float = 0
     u_hat_it_accumulated_average : list[float] = None
     post_cost_accumulation: float = 0
+    window_sizes : list[int] = None
     eit_trace: str = ''
     
 def get_file_line_count(file_path):
