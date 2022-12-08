@@ -263,13 +263,15 @@ def find_window_sized_index(windows_size, x, changed_tick = 0):
     find_window_sized_index(5,[1,0,0,0,0,0,1,1]) -> 0
     find_window_sized_index(5,[0,0,0,0,0,1,1]) -> 5
     find_window_sized_index(5,[1,0,0,0,0,0,1,1,0,1,0,1,1,1]) -> 7
+    find_window_sized_index(5,[1,0,0,0,0,0,1,1,0,1,0,1,1,1],7) -> 7
+    find_window_sized_index(5,[1,0,0,0,0,0,1,1,0,1,0,1,1,1],9) -> 8
     '''
     length = len(x)
     result_index = length - 1
     processed_count = 0
     for i, v in enumerate(reversed(x)):
         reversed_index = length - i - 1
-        if x[reversed_index] != 0 and i >= changed_tick:
+        if x[reversed_index] != 0 and reversed_index >= changed_tick:
             result_index = reversed_index
             processed_count += 1
             if processed_count >= windows_size:
