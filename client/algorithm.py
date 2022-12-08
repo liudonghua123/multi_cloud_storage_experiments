@@ -320,6 +320,7 @@ class AW_CUCB:
         trace_data.L = '   '.join(map(float_to_string, L[tick]))
         trace_data.U_min = '   '.join(map(float_to_string, U_min[tick]))
         trace_data.L_max = '   '.join(map(float_to_string, L_max[tick]))
+        trace_data.last_change_tick = [*self.last_change_tick]
         trace_data.changed_ticks_trace = '   '.join(changed_ticks_trace)
         
         # reset FM-PHT
