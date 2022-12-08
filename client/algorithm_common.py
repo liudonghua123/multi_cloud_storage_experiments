@@ -258,16 +258,22 @@ def find_window_sized_index(windows_size, x):
     windows_size: int, minimum value is 1
     x: list, tuple, or numpy array
     Find the first index of the in x execlude zeros from the end to the windows_size position
-    eg: find_window_sized_index(5,[1,0,0,0,0,0,1,1]) -> 0, find_window_sized_index(5,[1,0,0,0,0,0,1,1,0,1,0,1,1,1]) -> 7
+    eg: 
+    find_window_sized_index(5,[1,0,0,0,0,0,1,1]) -> 0
+    find_window_sized_index(5,[0,0,0,0,0,1,1]) -> 5
+    find_window_sized_index(5,[1,0,0,0,0,0,1,1,0,1,0,1,1,1]) -> 7
     '''
     length = len(x)
+    result_index = length - 1
+    processed_count = 0
     for i, v in enumerate(reversed(x)):
         reversed_index = length - i - 1
         if x[reversed_index] != 0:
-            windows_size -= 1
-            if windows_size == 0:
+            result_index = reversed_index
+            processed_count += 1
+            if processed_count >= windows_size:
                 break
-    return reversed_index
+    return result_index
 
 def calculate_accumulated_average(x):
     '''
