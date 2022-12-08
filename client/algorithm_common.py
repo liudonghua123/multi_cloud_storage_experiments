@@ -217,7 +217,7 @@ class TestData:
                         logger.info(f'set file_metadata.placement: ${placement} for file_id: {file_id}, read: {read}')
                         self.file_metadata[file_id] = FileMetadata(offset, size, placement)
                         
-                self.data.append(TraceData(timestamp, file_id, offset, size, read, timestamp - self.initial_timestamp))
+                self.data.append(TraceData(timestamp=timestamp, file_id=file_id, offset=offset, file_size=size, file_read=read, datetime_offset=timestamp - self.initial_timestamp))
                 if index % update_tick == 0:
                     spinner.text = f'Processing {index / self.file_input_lines * 100:.2f}%'
         return self.data, self.file_metadata
