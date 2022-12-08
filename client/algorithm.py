@@ -152,7 +152,7 @@ class AW_CUCB:
             eit_trace: list[str]= []
             for cloud_id in choosed_cloud_ids:
                 # start_tick = max(0, tick - window_sizes[cloud_id])
-                start_tick = find_window_sized_index(window_sizes[cloud_id], placement_policy_timed[:tick + 1, cloud_id])
+                start_tick = find_window_sized_index(window_sizes[cloud_id], placement_policy_timed[:tick + 1, cloud_id], self.last_change_tick[cloud_id])
                 Tiwi[cloud_id] = np.sum(placement_policy_timed[start_tick: tick + 1, cloud_id], axis=0)
                 latency_cloud_previous = latency_cloud_timed[start_tick: tick + 1, cloud_id]
                 liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_cloud_previous, axis=0)

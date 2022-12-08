@@ -254,7 +254,7 @@ def argmax_except_zero(x):
     '''
     return np.where(x == max_except_zero(x))[0][-1]
 
-def find_window_sized_index(windows_size, x):
+def find_window_sized_index(windows_size, x, changed_tick = 0):
     '''
     windows_size: int, minimum value is 1
     x: list, tuple, or numpy array
@@ -269,7 +269,7 @@ def find_window_sized_index(windows_size, x):
     processed_count = 0
     for i, v in enumerate(reversed(x)):
         reversed_index = length - i - 1
-        if x[reversed_index] != 0:
+        if x[reversed_index] != 0 and i >= changed_tick:
             result_index = reversed_index
             processed_count += 1
             if processed_count >= windows_size:
