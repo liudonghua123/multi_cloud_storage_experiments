@@ -2,7 +2,8 @@
 
 import sys
 import time
-from os.path import dirname, join, realpath
+from os.path import dirname, join, realpath, basename
+from os import makedirs
 import itertools
 import math
 import numpy as np
@@ -39,7 +40,7 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata],default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=1000, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=1000, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None, suffix=''):
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -56,6 +57,7 @@ class AW_CUCB:
         self.δ = δ
         self.optimize_initial_exploration = optimize_initial_exploration
         self.LB = LB
+        self.suffix = suffix
         self.migration_records: list[MigrationRecord] = []
         self.change_point_records: list[ChangePointRecord] = []
         self.last_change_tick: list[int] = [0] * self.N
@@ -387,8 +389,11 @@ class AW_CUCB:
         
         
     def save_result(self):
+        # create directory if not exists
+        results_dir = join(dirname(realpath(__file__)), f'results_{self.suffix}')
+        makedirs(results_dir, exist_ok=True)
         # save the migration records
-        with open('results/migration_records.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/migration_records.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             # {*[]} is empty set, same as set(), {*()}, {*{}}
             # customization the exclude list like {'id'}
@@ -410,14 +415,14 @@ class AW_CUCB:
             trace_data.post_cost_accumulation = post_cost_accumulation[index]
             # trace_data.u_hat_it = '   '.join(map(float_to_string, trace_data.u_hat_it))
         # save the trace data with latency
-        with open('results/trace_data_latency.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/trace_data_latency.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = OrderedSet(TraceData.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
             for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
                 writer.writerow([getattr(trace_data, column) for column in header])
         # save the change points
-        with open('results/change_points.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/change_points.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = OrderedSet(ChangePointRecord.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
@@ -435,7 +440,8 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     logger.info(f'head of data: {data[:5]}, tail of data: {data[-5:]}, head of file_metadata: {file_metadata_list[:5]}, tail of file_metadata: {file_metadata_list[-5:]}')
     # run the algorithm
     start_time = time.time()
-    algorithm = AW_CUCB(data, file_metadata)
+    suffix = basename(input_file).split('.')[0]
+    algorithm = AW_CUCB(data, file_metadata, suffix=suffix)
     algorithm.processing()
     logger.info(f'processing finished')
     algorithm.save_result()

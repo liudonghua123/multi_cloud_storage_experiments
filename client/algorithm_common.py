@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import sys
 import os
-from os.path import dirname, join, realpath
+from os.path import dirname, join, realpath, basename, exists
 import itertools
 import random
 import numpy as np
@@ -144,8 +144,6 @@ class TestData:
     We may need to use a database or key-value store like redis to store the data.
     '''
     
-    default_data_file: str = 'data.bin'
-    default_file_metadata_file: str = 'file_metadata.bin'
     
     def __init__(self, file_path: str, N=6, n=3, k=2, size_enlarge=100):
         '''
@@ -158,27 +156,29 @@ class TestData:
         self.size_enlarge = size_enlarge
         self.data = []
         self.file_metadata: dict[int: FileMetadata] = {}
+        # update default_data_file and default_metadata_file, use basename of file_path as prefix
+        prefix = basename(file_path).split('.')[0]
+        self.default_data_file = f'{prefix}_trace_data.bin'
+        self.default_metadata_file = f'{prefix}_metadata.bin'
     
     def load_data(self):
-        if os.path.exists(self.default_data_file) and os.path.exists(self.default_file_metadata_file):
+        if exists(self.default_data_file) and exists(self.default_metadata_file):
             logger.info(f'using the serilized data')
-            return TestData._load_data_via_deserialize()
+            return self._load_data_via_deserialize()
         logger.info(f'parse {self.file_path} data')
         data, file_metadata = self._parse_data()
-        logger.info(f'serialize the parsed to {self.default_data_file} and {self.default_file_metadata_file}')
-        TestData._save_data_via_serialize(data, file_metadata)
+        logger.info(f'serialize the parsed to {self.default_data_file} and {self.default_metadata_file}')
+        self._save_data_via_serialize(data, file_metadata)
         return data, file_metadata
     
-    @staticmethod
-    def _load_data_via_deserialize(data_file: str = default_data_file, file_metadata_file: str = default_file_metadata_file):
-        with open(data_file, 'rb') as data_file_fd, open(file_metadata_file, 'rb') as file_metadata_file_fd:
+    def _load_data_via_deserialize(self, data_file: str = None, file_metadata_file: str = None):
+        with open(data_file or self.default_data_file, 'rb') as data_file_fd, open(file_metadata_file or self.default_metadata_file, 'rb') as file_metadata_file_fd:
             data = pickle.load(data_file_fd)
             file_metadata = pickle.load(file_metadata_file_fd)
         return data, file_metadata
     
-    @staticmethod
-    def _save_data_via_serialize(data, file_metadata, data_file: str = default_data_file, file_metadata_file: str = default_file_metadata_file):
-        with open(data_file, 'wb') as data_file_fd, open(file_metadata_file, 'wb') as file_metadata_file_fd:
+    def _save_data_via_serialize(self, data, file_metadata, data_file: str = None, file_metadata_file: str = None):
+        with open(data_file or self.default_data_file, 'wb') as data_file_fd, open(file_metadata_file or self.default_metadata_file, 'wb') as file_metadata_file_fd:
             pickle.dump(data, data_file_fd)
             pickle.dump(file_metadata, file_metadata_file_fd)
     

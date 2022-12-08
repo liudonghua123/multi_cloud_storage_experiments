@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 import sys
-from os.path import dirname, join, realpath
+from os.path import dirname, join, realpath, basename
+from os import makedirs
 import numpy as np
 import fire
 import csv
@@ -16,7 +17,7 @@ logger = init_logging(join(dirname(realpath(__file__)), "algorithm_ewma.log"))
 
 
 class EACH_EWMA:
-  def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], N=6, n=3, k=2, ψ1=1, ψ2=1000, discount_factor=0.95):
+  def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], N=6, n=3, k=2, ψ1=1, ψ2=1000, discount_factor=0.95, suffix=''):
     self.data = data
     self.file_metadata: dict[int: FileMetadata] = file_metadata
     self.N = N
@@ -27,6 +28,7 @@ class EACH_EWMA:
     self.ψ1 = ψ1
     self.ψ2 = ψ2
     self.discount_factor = discount_factor
+    self.suffix = suffix
 
   def processing(self):
     # initialization
@@ -111,6 +113,9 @@ class EACH_EWMA:
         f"tick: {tick}, post_cost: {trace_data.post_cost}, post_reward: {post_reward}")
 
   def save_result(self):
+    # create directory if not exists
+    results_dir = join(dirname(realpath(__file__)), f'results_{self.suffix}')
+    makedirs(results_dir, exist_ok=True)
     # update xxx_accumulated_average
     latency__accumulated_average = calculate_accumulated_average([trace_data.latency for trace_data in self.data if trace_data.tick != -1])
     post_reward_accumulated_average = calculate_accumulated_average([trace_data.post_reward for trace_data in self.data if trace_data.tick != -1])
@@ -122,7 +127,7 @@ class EACH_EWMA:
         trace_data.post_cost_accumulated_average = post_cost_accumulated_average[index]
         trace_data.post_cost_accumulation = post_cost_accumulation[index]
     # save the trace data with latency
-    with open('results/trace_data_latency_ewma.csv', 'w', newline='') as csvfile:
+    with open(f'{results_dir}/trace_data_latency_ewma.csv', 'w', newline='') as csvfile:
       writer = csv.writer(csvfile)
       header = ['timestamp', 'file_id', 'file_size', 'file_read', 'placement_policy',
                 'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 'latency_accumulated_average', 'post_reward_accumulated_average', 'post_cost_accumulated_average', 'post_cost_accumulation']
@@ -141,7 +146,8 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
   logger.info(
     f'head of data: {data[:5]}, tail of data: {data[-5:]}, head of file_metadata: {file_metadata_list[:5]}, tail of file_metadata: {file_metadata_list[-5:]}')
   # run the algorithm
-  algorithm = EACH_EWMA(data, file_metadata)
+  suffix = basename(input_file).split('.')[0]
+  algorithm = EACH_EWMA(data, file_metadata,suffix=suffix)
   algorithm.processing()
   logger.info(f'processing finished')
   algorithm.save_result()
