@@ -113,6 +113,7 @@ class TraceData:
     post_cost_accumulated_average: float = 0
     u_hat_it_accumulated_average : list[float] = None
     post_cost_accumulation: float = 0
+    eit_trace: str = ''
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
@@ -252,12 +253,21 @@ def argmax_except_zero(x):
     '''
     return np.where(x == max_except_zero(x))[0][-1]
 
-def find_last_value_index(x):
+def find_window_sized_index(windows_size, x):
     '''
+    windows_size: int, minimum value is 1
     x: list, tuple, or numpy array
-    Find the index of the last non-zero value in x from the end to the start position
+    Find the first index of the in x execlude zeros from the end to the windows_size position
+    eg: find_window_sized_index(5,[1,0,0,0,0,0,1,1]) -> 0, find_window_sized_index(5,[1,0,0,0,0,0,1,1,0,1,0,1,1,1]) -> 7
     '''
-    return np.where(x != 0)[0][-1] if np.count_nonzero(x) > 0 else -1
+    length = len(x)
+    for i, v in enumerate(reversed(x)):
+        reversed_index = length - i - 1
+        if x[reversed_index] != 0:
+            windows_size -= 1
+            if windows_size == 0:
+                break
+    return reversed_index
 
 def calculate_accumulated_average(x):
     '''

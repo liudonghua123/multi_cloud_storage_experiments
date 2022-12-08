@@ -73,15 +73,17 @@ class AW_CUCB:
         U_min = np.zeros((self.ticks, self.N))
         L_max = np.zeros((self.ticks, self.N))
         C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
-        Tiwi = np.zeros((self.N,))
-        liwi = np.zeros((self.N,))
-        LB = np.zeros((self.N,))
-        eit = np.zeros((self.N,))
-        u_hat_it = np.zeros((self.N,))
         initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
         
+        eit = np.zeros((self.N,))
         for tick, trace_data in enumerate(self.data):
+            # initialization
+            Tiwi = np.zeros((self.N,))
+            liwi = np.zeros((self.N,))
+            LB = np.zeros((self.N,))
+            u_hat_it = np.zeros((self.N,))
             trace_data.tick = tick
+            
             # exploration phase
             if tick < C_N_n_count:
                 # use full combinations matrix
@@ -147,16 +149,18 @@ class AW_CUCB:
             # update statistics 17
             # Update statistics in time-window Wi(t) according to (17);
             # choosed_cloud_ids = np.where(placement_policy == 1)[0]
+            eit_trace: list[str]= []
             for cloud_id in choosed_cloud_ids:
-                start_tick = max(0, tick - window_sizes[cloud_id])
+                # start_tick = max(0, tick - window_sizes[cloud_id])
+                start_tick = find_window_sized_index(window_sizes[cloud_id], placement_policy_timed[:tick + 1, cloud_id])
                 Tiwi[cloud_id] = np.sum(placement_policy_timed[start_tick: tick + 1, cloud_id], axis=0)
                 latency_cloud_previous = latency_cloud_timed[start_tick: tick + 1, cloud_id]
                 liwi[cloud_id] = 1 / Tiwi[cloud_id] * np.sum(latency_cloud_previous, axis=0)
                 # LB[cloud_id] = max_except_zero(latency_cloud_previous) - min_except_zero(latency_cloud_previous) if self.LB == None else self.LB
                 # eit[cloud_id] = math.sqrt(self.ξ * math.log(window_sizes[cloud_id], 10) / Tiwi[cloud_id])
                 # e_X_phw(:,i)=sqrt(XI*log(t-rowindex(1,i))/total_t_phw(i));
-                eit[cloud_id] = math.sqrt(self.ξ * math.log(tick - find_last_value_index(placement_policy_timed[:tick, cloud_id]), math.e) / Tiwi[cloud_id])
-                
+                eit[cloud_id] = math.sqrt(self.ξ * math.log(tick - start_tick, math.e) / Tiwi[cloud_id]) if tick - start_tick > 0 else 0
+                eit_trace.append(f'eit[{cloud_id}]=sqrt({self.ξ}*ln({tick}-{start_tick})/{Tiwi[cloud_id]})={eit[cloud_id]}')
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
                 # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.
                 # however, if some operands are np_array, then np_array=a*b+c will keep the datetype of np_array
@@ -168,6 +172,7 @@ class AW_CUCB:
             trace_data.LB = '   '.join(map(float_to_string, LB))
             trace_data.eit = '   '.join(map(float_to_string, eit))
             trace_data.u_hat_it = u_hat_it.tolist()
+            trace_data.eit_trace = '   '.join(eit_trace)
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
             if trace_data.file_read:
                 post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))
