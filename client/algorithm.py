@@ -98,8 +98,10 @@ class AW_CUCB:
                 placement_policy = placement
             # ulization phase, read opeartion
             else:
+                trace_data.latency_policy = u_hat_it.tolist()
                 # sort uit
                 sorted_u_hat_it = np.argsort(u_hat_it)
+                trace_data.decision_metrics = sorted_u_hat_it.tolist()
                 if trace_data.file_read:
                     # Rank uˆi(t) in ascending order; 
                     # Select the top n arms to added into St for write operation
