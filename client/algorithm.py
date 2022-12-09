@@ -396,7 +396,7 @@ class AW_CUCB:
         results_dir = join(dirname(realpath(__file__)), f'results_{self.suffix}')
         makedirs(results_dir, exist_ok=True)
         # save the migration records
-        with open(f'{results_dir}/migration_records.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/migration_records_aw_cucb.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             # {*[]} is empty set, same as set(), {*()}, {*{}}
             # customization the exclude list like {'id'}
@@ -414,14 +414,14 @@ class AW_CUCB:
             trace_data.post_cost_accumulation = post_cost_accumulation[index]
             # trace_data.u_hat_it = '   '.join(map(float_to_string, trace_data.u_hat_it))
         # save the trace data with latency
-        with open(f'{results_dir}/trace_data_latency.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/trace_data_latency_aw_cucb.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = OrderedSet(TraceData.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
             for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
                 writer.writerow([getattr(trace_data, column) for column in header])
         # save the change points
-        with open(f'{results_dir}/change_points.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/change_points_aw_cucb.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = OrderedSet(ChangePointRecord.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
