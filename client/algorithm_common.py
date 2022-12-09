@@ -34,6 +34,19 @@ cloud_providers : list[str] = config['cloud_providers']
 debug : bool = config['debug']
 max_retries: int = config['max_retries']
 
+# algorithm params
+default_window_size = config['algorithm_params']['default_window_size']
+N = config['algorithm_params']['N']
+n = config['algorithm_params']['n']
+k = config['algorithm_params']['k']
+ψ1 = config['algorithm_params']['ψ1']
+ψ2 = config['algorithm_params']['ψ2']
+ξ = config['algorithm_params']['ξ']
+b_increase = config['algorithm_params']['b_increase']
+b_decrease = config['algorithm_params']['b_decrease']
+δ = config['algorithm_params']['δ']
+discount_factor = config['algorithm_params']['discount_factor']
+
 init_request_retries_session(cloud_providers, max_retries)
 
 @dataclass

@@ -19,7 +19,8 @@ logger = init_logging(
 
 
 class EACH_RANDOM:
-  def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], N=6, n=3, k=2, ψ1=1, ψ2=1000,suffix=''):
+  def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], 
+               N=N, n=n, k=k, ψ1=ψ1, ψ2=ψ2, suffix=''):
     self.data = data
     self.file_metadata: dict[int: FileMetadata] = file_metadata
     self.N = N

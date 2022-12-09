@@ -27,6 +27,22 @@ debug: true
 # 网络请求最大重试次数
 max_retries: 3
 
+# 算法公共参数
+# default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=1000, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5
+algorithm_params:
+  default_window_size: 50
+  N: 6
+  n: 3
+  k: 2
+  ψ1: 1
+  ψ2: 100
+  ξ: 1
+  b_increase: 0.4
+  b_decrease: 0.4
+  δ: 0.5
+  discount_factor: 0.95
+
+
 
 # 测试矩阵，cloud_placements * data_size * read
 network_test:

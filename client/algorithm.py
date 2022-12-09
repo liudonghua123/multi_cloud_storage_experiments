@@ -40,7 +40,11 @@ logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
 # T: ticks, the number of ticks in the simulation
 #
 class AW_CUCB:
-    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], default_window_size=50, N=6, n=3, k=2, ψ1=1, ψ2=1000, ξ=1, b_increase=0.4, b_decrease=0.4, δ=0.5, optimize_initial_exploration=True, LB=None, suffix=''):
+    def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], 
+                 default_window_size=default_window_size, N=N, n=n, k=k, 
+                 ψ1=ψ1, ψ2=ψ2, ξ=ξ, b_increase=b_increase, b_decrease=b_decrease, δ=δ, 
+                 LB=None, suffix=''):
+        logger.info(f'AW_CUCB, default_window_size: {default_window_size}, N: {N}, n: {n}, k: {k}, ψ1: {ψ1}, ψ2: {ψ2}, ξ: {ξ}, b_increase: {b_increase}, b_decrease: {b_decrease}, δ: {δ}, LB: {LB}, suffix: {suffix}')
         self.data = data
         self.default_window_size = default_window_size
         self.file_metadata: dict[int: FileMetadata] = file_metadata
@@ -55,7 +59,6 @@ class AW_CUCB:
         self.b_increase = b_increase
         self.b_decrease = b_decrease
         self.δ = δ
-        self.optimize_initial_exploration = optimize_initial_exploration
         self.LB = LB
         self.suffix = suffix
         self.migration_records: list[MigrationRecord] = []
