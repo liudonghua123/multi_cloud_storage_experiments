@@ -146,7 +146,7 @@ class AW_CUCB:
             logger.info(f"tick: {tick}, latency_cloud: {latency_cloud}")
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
-            trace_data.latency_full = '   '.join(map(float_to_string, latency_cloud))
+            trace_data.latency_full = latency_cloud
             trace_data.latency_per_size = latency_per_size
             # trace_data.placement_policy = '   '.join(map(str, placement_policy))
             trace_data.placement_policy = '_'.join([str(i) for i, x in enumerate(placement_policy) if x == 1])
@@ -176,8 +176,8 @@ class AW_CUCB:
                 else:
                     u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id]) - eit[cloud_id]
             
-            trace_data.LB = '   '.join(map(float_to_string, LB))
-            trace_data.eit = '   '.join(map(float_to_string, eit))
+            trace_data.LB = LB.tolist()
+            trace_data.eit = eit.tolist()
             trace_data.u_hat_it = u_hat_it.tolist()
             trace_data.eit_trace = '   '.join(eit_trace)
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
@@ -325,10 +325,10 @@ class AW_CUCB:
             changed_ticks.append(changed_tick)
             changed_ticks_trace.append(changed_tick_trace)
         
-        trace_data.U = '   '.join(map(float_to_string, U[tick]))
-        trace_data.L = '   '.join(map(float_to_string, L[tick]))
-        trace_data.U_min = '   '.join(map(float_to_string, U_min[tick]))
-        trace_data.L_max = '   '.join(map(float_to_string, L_max[tick]))
+        trace_data.U = U[tick].tolist()
+        trace_data.L = L[tick].tolist()
+        trace_data.U_min = U_min[tick].tolist()
+        trace_data.L_max = L_max[tick].tolist()
         trace_data.last_change_tick = [*self.last_change_tick]
         trace_data.changed_ticks_trace = '   '.join(changed_ticks_trace)
         
