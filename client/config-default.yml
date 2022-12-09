@@ -55,3 +55,19 @@ network_test_visualization:
   percentage_values: [50, 99]
   # x轴刻度数量
   xtick_size: 20
+  
+# 算法结果可视化
+algorithm_visualization:
+  # 比较的算法
+  algorithms:
+    - aw_cucb
+    - simple
+    - ewma
+  # 算法比较指标
+  metrics:
+    - post_reward_accumulated_average
+    - post_cost_accumulated_average
+    - latency
+  # 是否显示为子图
+  subplot: false
+  
