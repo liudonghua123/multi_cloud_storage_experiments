@@ -63,6 +63,7 @@ algorithm_visualization:
     - aw_cucb
     - simple
     - ewma
+    - random
   # 算法比较指标
   metrics:
     - post_reward_accumulated_average
