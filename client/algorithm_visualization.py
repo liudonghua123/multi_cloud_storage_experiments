@@ -94,9 +94,6 @@ def visualization_from_dataframe(
 
   # Create subplot for each metric
   if subplot:
-    fig, axes = plt.subplots(len(metrics))
-    fig.tight_layout()
-
     def plot_metric(ax, metric, df, algorithms, legend_loc):
       for algorithm in algorithms:
         x = df["tick"]
@@ -105,16 +102,13 @@ def visualization_from_dataframe(
         ax.set_title(metric, fontweight="bold")
         ax.legend(loc=legend_loc, shadow=True)
         mplcursors.cursor(ax, hover=True)
-
-    # TODO: multi-threading not working here, the line is not shown! why?
-    # with ThreadPoolExecutor(max_workers=len(metrics)) as executor:
-    #   executor.map(plot_metric, axes, metrics, df, algorithms, [legend_loc] * len(metrics))
-    #   plt.show()
+    fig, axes = plt.subplots(len(metrics))
+    fig.tight_layout()
     for ax, metric in zip(axes, metrics):
       plot_metric(ax, metric, df, algorithms, legend_loc)
     plt.show()
   else:
-    for metric in metrics:
+    def plot_metric(metric, df, algorithms, legend_loc):
       plt.figure()
       for algorithm in algorithms:
         x = df["tick"]
@@ -126,6 +120,15 @@ def visualization_from_dataframe(
       plt.legend(loc=legend_loc, shadow=True)
       mplcursors.cursor(hover=True)
       plt.show()
+      
+    for metric in metrics:
+      plot_metric(metric, df, algorithms, legend_loc)
+    
+    # TODO: multi-threading not working here, the line is not shown! why?
+    # UserWarning: Starting a Matplotlib GUI outside of the main thread will likely fail.
+    # with ThreadPoolExecutor(max_workers=len(metrics)) as executor:
+    #   size_of_metrics = len(metrics)
+    #   executor.map(plot_metric, metrics, [df] * size_of_metrics, [algorithms] * size_of_metrics, [legend_loc] * size_of_metrics)
 
 
 def main(
