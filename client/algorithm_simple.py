@@ -60,6 +60,7 @@ class EACH_SIMPLE:
         file_metadata.placement = placement
         placement_policy = placement
       else:
+        trace_data.latency_policy = current_simple_latency.tolist()
         # sort simple latency
         sorted_current_simple_latency = np.argsort(current_simple_latency)
         # Rank uˆi(t) in ascending order;
@@ -140,7 +141,9 @@ class EACH_SIMPLE:
     with open(f'{results_dir}/trace_data_latency_simple.csv', 'w', newline='') as csvfile:
       writer = csv.writer(csvfile)
       header = ['timestamp', 'file_id', 'file_size', 'file_read', 'placement_policy',
-                'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 'post_reward_accumulated_average', 'post_cost_accumulated_average', 'post_cost_accumulation']
+                'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 
+                'post_reward_accumulated_average', 'post_cost_accumulated_average', 
+                'post_cost_accumulation', 'latency_policy']
       writer.writerow(header)
       for trace_data in filter(lambda trace_data: trace_data.tick != -1, self.data):
         writer.writerow([getattr(trace_data, column) for column in header])

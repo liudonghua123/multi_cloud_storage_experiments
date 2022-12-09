@@ -114,6 +114,7 @@ class TraceData:
     window_sizes : list[int] = None
     last_change_tick : list[int] = None
     eit_trace: str = ''
+    latency_policy: list[float] = None
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
