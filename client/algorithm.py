@@ -436,7 +436,7 @@ class AW_CUCB:
         # self.save_matrix_as_csv(self.window_sizes_timed, 'results/window_sizes_timed.csv')
     
     
-def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt')):
+def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt'), only_preprocess: bool = False):
     # parsing the input file data
     test_data = TestData(input_file)
     data, file_metadata = test_data.load_data()
@@ -444,14 +444,15 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     file_metadata_list = list(file_metadata.items())
     logger.info(f'head of data: {data[:5]}, tail of data: {data[-5:]}, head of file_metadata: {file_metadata_list[:5]}, tail of file_metadata: {file_metadata_list[-5:]}')
     # run the algorithm
-    start_time = time.time()
-    suffix = basename(input_file).split('.')[0]
-    algorithm = AW_CUCB(data, file_metadata, suffix=suffix)
-    algorithm.processing()
-    logger.info(f'processing finished')
-    algorithm.save_result()
-    logger.info(f'save_result finished')
-    logger.info(f'total time: {time.time() - start_time}')
+    if not only_preprocess:
+        start_time = time.time()
+        suffix = basename(input_file).split('.')[0]
+        algorithm = AW_CUCB(data, file_metadata, suffix=suffix)
+        algorithm.processing()
+        logger.info(f'processing finished')
+        algorithm.save_result()
+        logger.info(f'save_result finished')
+        logger.info(f'total time: {time.time() - start_time}')
 
 def test(test_csv_file: str = 'network_test_results/network_test_aggregated__mean.csv'):
     algorithm = AW_CUCB([], [])
