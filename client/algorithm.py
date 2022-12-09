@@ -78,12 +78,12 @@ class AW_CUCB:
         initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
         
         eit = np.zeros((self.N,))
+        u_hat_it = np.zeros((self.N,))
         for tick, trace_data in enumerate(self.data):
             # initialization
             Tiwi = np.zeros((self.N,))
             liwi = np.zeros((self.N,))
             LB = np.zeros((self.N,))
-            u_hat_it = np.zeros((self.N,))
             trace_data.tick = tick
             
             # exploration phase
