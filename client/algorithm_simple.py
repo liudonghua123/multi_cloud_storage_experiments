@@ -88,6 +88,10 @@ class EACH_SIMPLE:
           # write operation
           placement_policy = [
             1 if i in sorted_current_simple_latency[:self.n] else 0 for i in range(self.N)]
+          if self.file_metadata.get(trace_data.file_id) == None:
+            self.file_metadata[trace_data.file_id] = FileMetadata(trace_data.offset, trace_data.file_size)
+          file_metadata = self.file_metadata[trace_data.file_id]
+          file_metadata.placement = placement_policy
 
       logger.info(f'placement policy: {placement_policy}')
       # do request to get latency
