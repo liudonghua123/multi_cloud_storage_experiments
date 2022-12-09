@@ -70,6 +70,7 @@ class AW_CUCB:
         window_sizes = np.full((self.N,),self.default_window_size)
         placement_policy_timed = np.zeros((self.ticks, self.N))
         latency_cloud_timed = np.zeros((self.ticks, self.N))
+        latency_per_size_timed = np.zeros((self.ticks, self.N))
         U = np.zeros((self.ticks, self.N))
         L = np.zeros((self.ticks, self.N))
         U_min = np.zeros((self.ticks, self.N))
@@ -136,7 +137,7 @@ class AW_CUCB:
             # Use thread to make request
             trace_data.request_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
             _, *latency_cloud = get_latency_sync(placement_policy, tick, self.N, self.k, cloud_providers, trace_data.file_size, trace_data.file_read)
-            
+            latency_per_size = [latency / trace_data.file_size * 1024 * 1024 for latency in latency_cloud]
             # update the metadata placement for write operation
             if not trace_data.file_read:
                 file_metadata = self.file_metadata[trace_data.file_id]
@@ -146,10 +147,12 @@ class AW_CUCB:
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
             trace_data.latency_full = '   '.join(map(float_to_string, latency_cloud))
+            trace_data.latency_per_size = latency_per_size
             # trace_data.placement_policy = '   '.join(map(str, placement_policy))
             trace_data.placement_policy = '_'.join([str(i) for i, x in enumerate(placement_policy) if x == 1])
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
+            latency_per_size_timed[tick] = latency_per_size
             # update statistics 17
             # Update statistics in time-window Wi(t) according to (17);
             # choosed_cloud_ids = np.where(placement_policy == 1)[0]

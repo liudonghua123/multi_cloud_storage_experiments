@@ -91,6 +91,7 @@ class TraceData:
     datetime_offset: int = 0
     latency: int = -1
     latency_full: int = -1
+    latency_per_size: float = -1
     placement: list[int] = None
     placement_policy: list[int] = None
     migration_targets: list[int] = None
