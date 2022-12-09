@@ -108,10 +108,8 @@ class TraceData:
     L_max: str = ''
     changed_ticks_trace: str = ''
     request_datetime: str = ''
-    latency_accumulated_average: int = -1
     post_reward_accumulated_average: float = 0
     post_cost_accumulated_average: float = 0
-    u_hat_it_accumulated_average : list[float] = None
     post_cost_accumulation: float = 0
     window_sizes : list[int] = None
     last_change_tick : list[int] = None

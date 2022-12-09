@@ -402,16 +402,12 @@ class AW_CUCB:
             for migration_record in self.migration_records:
                 writer.writerow([getattr(migration_record, column) for column in header])
         # update xxx_accumulated_average
-        latency__accumulated_average = calculate_accumulated_average([trace_data.latency for trace_data in self.data if trace_data.tick != -1])
         post_reward_accumulated_average = calculate_accumulated_average([trace_data.post_reward for trace_data in self.data if trace_data.tick != -1])
         post_cost_accumulated_average = calculate_accumulated_average([trace_data.post_cost for trace_data in self.data if trace_data.tick != -1])
-        u_hat_it_accumulated_average = calculate_accumulated_average_matrix([trace_data.u_hat_it for trace_data in self.data if trace_data.tick != -1])
         post_cost_accumulation = calculate_accumulation([trace_data.post_cost for trace_data in self.data if trace_data.tick != -1])
         for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
-            trace_data.latency_accumulated_average = latency__accumulated_average[index]
             trace_data.post_reward_accumulated_average = post_reward_accumulated_average[index]
             trace_data.post_cost_accumulated_average = post_cost_accumulated_average[index]
-            trace_data.u_hat_it_accumulated_average = u_hat_it_accumulated_average[index]
             trace_data.post_cost_accumulation = post_cost_accumulation[index]
             # trace_data.u_hat_it = '   '.join(map(float_to_string, trace_data.u_hat_it))
         # save the trace data with latency

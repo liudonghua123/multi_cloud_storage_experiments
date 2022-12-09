@@ -123,7 +123,6 @@ class EACH_SIMPLE:
     post_cost_accumulated_average = calculate_accumulated_average([trace_data.post_cost for trace_data in self.data if trace_data.tick != -1])
     post_cost_accumulation = calculate_accumulation([trace_data.post_cost for trace_data in self.data if trace_data.tick != -1])
     for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
-        trace_data.latency_accumulated_average = latency__accumulated_average[index]
         trace_data.post_reward_accumulated_average = post_reward_accumulated_average[index]
         trace_data.post_cost_accumulated_average = post_cost_accumulated_average[index]
         trace_data.post_cost_accumulation = post_cost_accumulation[index]
@@ -131,7 +130,7 @@ class EACH_SIMPLE:
     with open(f'{results_dir}/trace_data_latency_simple.csv', 'w', newline='') as csvfile:
       writer = csv.writer(csvfile)
       header = ['timestamp', 'file_id', 'file_size', 'file_read', 'placement_policy',
-                'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 'latency_accumulated_average', 'post_reward_accumulated_average', 'post_cost_accumulated_average', 'post_cost_accumulation']
+                'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 'post_reward_accumulated_average', 'post_cost_accumulated_average', 'post_cost_accumulation']
       writer.writerow(header)
       for trace_data in filter(lambda trace_data: trace_data.tick != -1, self.data):
         writer.writerow([getattr(trace_data, column) for column in header])
