@@ -36,19 +36,29 @@ class EACH_SIMPLE:
     placement_policy_timed = np.zeros((self.ticks, self.N))
     latency_cloud_timed = np.zeros((self.ticks, self.N))
     current_simple_latency = np.full((self.N,), np.inf)
-
+    C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
+    initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
+        
     for tick, trace_data in enumerate(self.data):
       trace_data.tick = tick
       logger.info(f"[tick: {tick}]{'-'*20}")
       # initial phase
 
-      # The first tick, the placement policy is selected randomly
-      if tick == 0:
-        # write operation
-        placement_policy = np.array([1, 1, 1, 0, 0, 0])
-      elif tick == 1:
-        # write operation
-        placement_policy = np.array([0, 0, 0, 1, 1, 1])
+      # # The first tick, the placement policy is selected randomly
+      # if tick == 0:
+      #   # write operation
+      #   placement_policy = np.array([1, 1, 1, 0, 0, 0])
+      # elif tick == 1:
+      #   # write operation
+      #   placement_policy = np.array([0, 0, 0, 1, 1, 1])
+      if tick < C_N_n_count:
+        # use full combinations matrix
+        placement = [1 if i in initial_optimized_placement[tick] else 0 for i in range(self.N)]
+        if self.file_metadata.get(trace_data.file_id) == None:
+            self.file_metadata[trace_data.file_id] = FileMetadata(trace_data.offset, trace_data.file_size)
+        file_metadata = self.file_metadata[trace_data.file_id]
+        file_metadata.placement = placement
+        placement_policy = placement
       else:
         # sort simple latency
         sorted_current_simple_latency = np.argsort(current_simple_latency)
