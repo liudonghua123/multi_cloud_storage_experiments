@@ -194,7 +194,7 @@ class AW_CUCB:
             logger.info(f"tick: {tick}, post_reward: {post_reward}")
             
             # check whether FM_PHT
-            changed_ticks = self.FM_PHT(trace_data, U, L, U_min, L_max, tick, latency_cloud_timed)
+            changed_ticks = self.FM_PHT(trace_data, U, L, U_min, L_max, tick, latency_per_size_timed)
             logger.info(f"tick: {tick}, changed_ticks: {changed_ticks}")
             # St' = file_metadata[file_id].placement, donote as previous_placement_policy
             St_hat = self.file_metadata[trace_data.file_id].placement
