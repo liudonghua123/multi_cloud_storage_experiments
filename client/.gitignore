@@ -11,3 +11,4 @@ results/*
 network_test_results/*
 MSR-Cambridge_1/*
 !network_test_results/.gitkeep
+results_*/
