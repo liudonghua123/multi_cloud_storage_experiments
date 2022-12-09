@@ -35,6 +35,7 @@ class EACH_EWMA:
     placement_policy_timed = np.zeros((self.ticks, self.N))
     latency_cloud_timed = np.zeros((self.ticks, self.N))
     current_ewma_latency = np.zeros((self.N,))
+    decision_metrics = np.zeros((self.N,))
     C_N_n_count = len(list(itertools.combinations(range(self.N), self.n)))
     initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
     
@@ -57,9 +58,10 @@ class EACH_EWMA:
         file_metadata.placement = placement
         placement_policy = placement
       else:
-        trace_data.latency_policy = current_ewma_latency.tolist()
+        trace_data.latency_policy = decision_metrics.tolist()
         # sort ewma latency
-        sorted_current_ewma_latency = np.argsort(current_ewma_latency)
+        sorted_decision_metrics = np.argsort(decision_metrics)
+        trace_data.decision_metrics = sorted_decision_metrics.tolist()
         # Rank uˆi(t) in ascending order;
         # Select the top n arms to added into St for write operation
         # Select the top k arms based on placement to added into St for read operation
@@ -72,20 +74,20 @@ class EACH_EWMA:
                 
           placement_policy = np.zeros((self.N,), dtype=int)
           k = self.k
-          for i, _ in enumerate(sorted_current_ewma_latency):
+          for i, _ in enumerate(sorted_decision_metrics):
             if placement[i] == 1:
               placement_policy[i] = 1
               k -= 1
               if k == 0:
                 break
           logger.info(
-            f"current_ewma_latency: {current_ewma_latency}, sorted_current_ewma_latency: {sorted_current_ewma_latency}")
+            f"decision_metrics: {decision_metrics}, sorted_decision_metrics: {sorted_decision_metrics}")
           logger.info(
             f"placement: {placement}, placement_policy: {placement_policy}")
         else:
           # write operation
           placement_policy = [
-            1 if i in sorted_current_ewma_latency[:self.n] else 0 for i in range(self.N)]
+            1 if i in sorted_decision_metrics[:self.n] else 0 for i in range(self.N)]
           if self.file_metadata.get(trace_data.file_id) == None:
             self.file_metadata[trace_data.file_id] = FileMetadata(trace_data.offset, trace_data.file_size)
           file_metadata = self.file_metadata[trace_data.file_id]
@@ -113,6 +115,10 @@ class EACH_EWMA:
         if current_ewma_latency[cloud_id] != 0:
           current_ewma_latency[cloud_id] = self.discount_factor * latency_cloud[cloud_id] + (
             1 - self.discount_factor) * current_ewma_latency[cloud_id]
+          if trace_data.file_read:
+            decision_metrics[cloud_id] = self.ψ1 * current_ewma_latency[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id])
+          else:
+            decision_metrics[cloud_id] = self.ψ1 * current_ewma_latency[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id])
         else:
           logger.warning(f'initial current_ewma_latency[{cloud_id}]')
           current_ewma_latency[cloud_id] = latency_cloud[cloud_id]
@@ -158,7 +164,7 @@ class EACH_EWMA:
       header = ['tick', 'timestamp', 'file_id', 'file_size', 'file_read', 'placement', 'placement_policy',
                 'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 
                 'post_reward_accumulated_average', 'post_cost_accumulated_average', 
-                'post_cost_accumulation', 'latency_policy']
+                'post_cost_accumulation', 'latency_policy', 'decision_metrics']
       writer.writerow(header)
       for trace_data in filter(lambda trace_data: trace_data.tick != -1, self.data):
         writer.writerow([getattr(trace_data, column) for column in header])
