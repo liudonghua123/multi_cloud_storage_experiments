@@ -103,11 +103,9 @@ def plot_placement_policy(ax, df, algorithms, legend_loc):
         statistics_results[algorithm][node] += 1
   logger.info(f'statistics_results: {statistics_results}')
   # prepare the data for plot
-  # node_keys = ['0', '1', ...]
+  # node_keys = [0, 1, ...]
   nodes_keys = statistics_results[algorithms[0]].keys()
   nodes_keys = sorted(nodes_keys)
-  # nodes_data = [[xx,xx,xx],[xx,xx,xx], ...]
-  nodes_data_list = [statistics_results[algorithm] for algorithm in algorithms]
   # plot the node frequency bar
   for i, algorithm in enumerate(algorithms):
     x = list(map(lambda x: x + i * 0.2, nodes_keys))
@@ -137,7 +135,7 @@ def visualization_from_dataframe(
         ax.plot(x, y, label=f'{algorithm}', mouseover=True)
         ax.set_title(metric, fontweight="bold")
         ax.legend(loc=legend_loc, shadow=True)
-        mplcursors.cursor(ax, hover=True)
+      mplcursors.cursor(ax, hover=True)
     fig, axes = plt.subplots(len(metrics + extra_metrics), 1)
     fig.tight_layout()
     # for metrics
