@@ -36,10 +36,9 @@ from requests.exceptions import Timeout, ConnectionError
 # Or you need to run this script in the parent directory using the command: python -m client.algorithm
 sys.path.append(dirname(realpath(".")))
 from common.config_logging import init_logging
-from common.utility import get_latency, get_latency_sync
 
 logger = init_logging(
-    join(dirname(realpath(__file__)), "network_test_visualization.log")
+    join(dirname(realpath(__file__)), "algorithm_visualization.log")
 )
 
 # read config-default.yml, config.yml(optional, override the default configurations) using yaml
@@ -91,20 +90,28 @@ def visualization_from_dataframe(
     legend_loc: str,
 ):
   logger.info(
-    f"df.shape: {df.shape}, df.columns: {df.columns}, len(df): {len(df)}, df.head(): {df.head()}")
-  
+    f"visualization_from_dataframe df.shape: {df.shape}, df.columns: {df.columns}, len(df): {len(df)}, df.head(): {df.head()}")
+
   # Create subplot for each metric
   if subplot:
     fig, axes = plt.subplots(len(metrics))
     fig.tight_layout()
-    for index, ax in enumerate(axes):
-      metric = metrics[index]
+
+    def plot_metric(ax, metric, df, algorithms, legend_loc):
       for algorithm in algorithms:
         x = df["tick"]
         y = df[f'{metric}_{algorithm}']
         ax.plot(x, y, label=f'{algorithm}', mouseover=True)
         ax.set_title(metric, fontweight="bold")
         ax.legend(loc=legend_loc, shadow=True)
+        mplcursors.cursor(ax, hover=True)
+
+    # TODO: multi-threading not working here, the line is not shown! why?
+    # with ThreadPoolExecutor(max_workers=len(metrics)) as executor:
+    #   executor.map(plot_metric, axes, metrics, df, algorithms, [legend_loc] * len(metrics))
+    #   plt.show()
+    for ax, metric in zip(axes, metrics):
+      plot_metric(ax, metric, df, algorithms, legend_loc)
     plt.show()
   else:
     for metric in metrics:
@@ -117,6 +124,7 @@ def visualization_from_dataframe(
       plt.title(metric, fontweight="bold")
       # Adding legend, which helps us recognize the curve according to it's color
       plt.legend(loc=legend_loc, shadow=True)
+      mplcursors.cursor(hover=True)
       plt.show()
 
 
