@@ -67,7 +67,11 @@ algorithm_visualization:
   metrics:
     - post_reward_accumulated_average
     - post_cost_accumulated_average
-    - latency
   # 是否显示为子图
-  subplot: false
+  subplot: true
+  # 是否统计节点请求数据
+  node_statistics: true
+  # 扩展指标, 不直接参与比较, 一般需要处理后才能使用
+  extra_metrics: 
+    - placement_policy
   
