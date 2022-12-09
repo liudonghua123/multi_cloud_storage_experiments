@@ -11,7 +11,7 @@ from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from os.path import dirname, join, realpath
-from common.config_logging import init_logging
+from mergedeep import merge
 from halo import Halo
 import yaml
 import random
@@ -44,7 +44,8 @@ def get_config(dir_path):
         logger.info(f"Loading override config file: {config_file}")
         with open(join(dir_path, config_file), mode="r", encoding="utf-8") as file:
             # use **kwargs to merge the two dictionaries
-            config = {**config, **yaml.safe_load(file)}
+            # use https://github.com/clarketm/mergedeep#usage to merge in deep
+            config = merge({}, config, yaml.safe_load(file))
     return config
 
 class spinner_context:

@@ -20,3 +20,6 @@ mplcursors
 # https://github.com/rspeer/ordered-set/blob/master/ordered_set/__init__.py
 # from ordered_set import OrderedSet
 ordered-set
+
+# https://github.com/clarketm/mergedeep
+mergedeep
