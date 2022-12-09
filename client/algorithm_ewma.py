@@ -139,7 +139,7 @@ class EACH_EWMA:
     # save the trace data with latency
     with open(f'{results_dir}/trace_data_latency_ewma.csv', 'w', newline='') as csvfile:
       writer = csv.writer(csvfile)
-      header = ['timestamp', 'file_id', 'file_size', 'file_read', 'placement_policy',
+      header = ['tick', 'timestamp', 'file_id', 'file_size', 'file_read', 'placement_policy',
                 'latency', 'latency_full', 'post_reward', 'post_cost', 'request_datetime', 
                 'post_reward_accumulated_average', 'post_cost_accumulated_average', 
                 'post_cost_accumulation', 'latency_policy']
