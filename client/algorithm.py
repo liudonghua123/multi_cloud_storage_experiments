@@ -145,7 +145,8 @@ class AW_CUCB:
             # update the latency of trace_data
             trace_data.latency = max(latency_cloud)
             trace_data.latency_full = '   '.join(map(float_to_string, latency_cloud))
-            trace_data.placement_policy = '   '.join(map(str, placement_policy))
+            # trace_data.placement_policy = '   '.join(map(str, placement_policy))
+            trace_data.placement_policy = '_'.join([str(i) for i, x in enumerate(placement_policy) if x == 1])
             placement_policy_timed[tick] = placement_policy   
             latency_cloud_timed[tick] = latency_cloud
             # update statistics 17
