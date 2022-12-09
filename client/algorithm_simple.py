@@ -123,6 +123,11 @@ class EACH_SIMPLE:
       trace_data.post_reward = post_reward
       logger.info(
         f"tick: {tick}, post_cost: {trace_data.post_cost}, post_reward: {post_reward}")
+            
+      # save the result interval
+      if tick % 100 == 0:
+          logger.info(f"tick: {tick}, save the result interval")
+          self.save_result()
 
   def save_result(self):
     # create directory if not exists
