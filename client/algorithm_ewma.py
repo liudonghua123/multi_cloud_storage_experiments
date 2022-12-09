@@ -66,6 +66,10 @@ class EACH_EWMA:
         if trace_data.file_read:
           # read operation
           placement = self.file_metadata[trace_data.file_id].placement
+          # raise Exception when placement is empty
+          if sum(placement) != self.n:
+            raise Exception(f'Invalid placement {placement} for tick {tick}, trace_data: {trace_data}')
+                
           placement_policy = np.zeros((self.N,), dtype=int)
           k = self.k
           for i, _ in enumerate(sorted_current_ewma_latency):
@@ -82,6 +86,10 @@ class EACH_EWMA:
           # write operation
           placement_policy = [
             1 if i in sorted_current_ewma_latency[:self.n] else 0 for i in range(self.N)]
+          if self.file_metadata.get(trace_data.file_id) == None:
+            self.file_metadata[trace_data.file_id] = FileMetadata(trace_data.offset, trace_data.file_size)
+          file_metadata = self.file_metadata[trace_data.file_id]
+          file_metadata.placement = placement_policy
 
       logger.info(f'placement policy: {placement_policy}')
       trace_data.request_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")

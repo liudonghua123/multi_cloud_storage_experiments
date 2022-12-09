@@ -69,6 +69,9 @@ class EACH_SIMPLE:
         if trace_data.file_read:
           # read operation
           placement = self.file_metadata[trace_data.file_id].placement
+          # raise Exception when placement is empty
+          if sum(placement) != self.n:
+            raise Exception(f'Invalid placement {placement} for tick {tick}, trace_data: {trace_data}')
           placement_policy = np.zeros((self.N,), dtype=int)
           k = self.k
           for i, _ in enumerate(sorted_current_simple_latency):
