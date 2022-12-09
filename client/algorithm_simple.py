@@ -77,7 +77,7 @@ class EACH_SIMPLE:
           # if sorted_decision_metrics is like [4,2,3,5,1,0] and placement is like [0,1,1,0,0,1], then placement_policy is like [0,1,0,0,0,1]
           placement_policy = np.zeros((self.N,), dtype=int)
           k = self.k
-          for i in enumerate(sorted_decision_metrics):
+          for i in sorted_decision_metrics:
             if placement[i] == 1:
               placement_policy[i] = 1
               k -= 1
