@@ -100,7 +100,9 @@ class EACH_SIMPLE:
       # update the latency of trace_data
       trace_data.latency = max(latency_cloud)
       trace_data.latency_full = '   '.join(map(float_to_string, latency_cloud))
-      trace_data.placement = '   '.join(map(str, self.file_metadata[trace_data.file_id].placement))
+      # trace_data.placement = '   '.join(map(str, self.file_metadata[trace_data.file_id].placement))
+      trace_data.placement = '_'.join(
+        [str(i) for i, x in enumerate(self.file_metadata[trace_data.file_id].placement) if x == 1])
       trace_data.placement_policy = '_'.join(
         [str(i) for i, x in enumerate(placement_policy) if x == 1])
       placement_policy_timed[tick] = placement_policy

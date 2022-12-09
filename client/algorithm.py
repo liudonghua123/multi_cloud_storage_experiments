@@ -196,7 +196,9 @@ class AW_CUCB:
             St_hat = self.file_metadata[trace_data.file_id].placement
             # St = select the top n from N in uit, donote as current_placement_policy
             St = [1 if i in np.argsort(u_hat_it)[:self.n] else 0 for i in range(self.N)]
-            trace_data.placement = '   '.join(map(str, self.file_metadata[trace_data.file_id].placement))
+            # trace_data.placement = '   '.join(map(str, self.file_metadata[trace_data.file_id].placement))
+            trace_data.placement = '_'.join(
+                [str(i) for i, x in enumerate(self.file_metadata[trace_data.file_id].placement) if x == 1])
             trace_data.migration_targets = '   '.join(map(str, St))
             if any(changed_ticks):
                 # convert changed_ticks from ChangePoint to int
