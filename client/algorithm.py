@@ -278,6 +278,8 @@ class AW_CUCB:
     def FM_PHT(self, trace_data, U, L, U_min, L_max, tick, latency_timed):        
         def find_exists_value_backward(array, row, column):
             while row >= 0:
+                # array[row][column] form is capatible with both numpy array and nested list
+                # But a=array([[1, 2, 3],[4, 5, 6]]), a[:2][1] => array([4, 5, 6]), a[:2, 1] => array([2, 5])
                 if array[row][column] != 0:
                     return array[row][column]
                 row -= 1
@@ -287,7 +289,7 @@ class AW_CUCB:
         changed_ticks_trace: list[str] = []
         for cloud_id in range(self.N):                
             # skip the cloud_id that is not used
-            if latency_timed[tick, cloud_id] == 0:
+            if latency_timed[tick][cloud_id] == 0:
                 changed_ticks.append(None)
                 continue
             
@@ -295,29 +297,30 @@ class AW_CUCB:
             if tick == 0:
                 U[tick][cloud_id] = - self.δ
                 L[tick][cloud_id] = self.δ
-                U_min[tick, cloud_id] = U[tick][cloud_id]
-                L_max[tick, cloud_id] = L[tick][cloud_id]
+                U_min[tick][cloud_id] = U[tick][cloud_id]
+                L_max[tick][cloud_id] = L[tick][cloud_id]
                 changed_ticks.append(None)
                 continue
             
             # calculate the rest ticks
             latency = latency_timed[self.last_change_tick[cloud_id]:tick + 1, cloud_id]
             latency_except_zero = np.delete(latency, np.where(latency == 0))
-            latency_current = latency_timed[tick, cloud_id]
+            latency_current = latency_timed[tick][cloud_id]
             latency_average = np.average(latency_except_zero)
-            U[tick][cloud_id] = tick / (tick + 1) * find_exists_value_backward(U, tick, cloud_id) + (latency_current - latency_average - self.δ)
-            L[tick][cloud_id] = tick / (tick + 1) * find_exists_value_backward(L, tick, cloud_id) + (latency_current - latency_average + self.δ)
-            U_min[tick, cloud_id] = min_except_zero(U[:tick + 1, cloud_id])
-            L_max[tick, cloud_id] = max_except_zero(L[:tick + 1, cloud_id])
+            u_previous = find_exists_value_backward(U, tick - 1, cloud_id)
+            U[tick][cloud_id] = tick / (tick + 1) * u_previous + (latency_current - latency_average - self.δ)
+            l_previous = find_exists_value_backward(L, tick - 1, cloud_id)
+            L[tick][cloud_id] = tick / (tick + 1) * l_previous + (latency_current - latency_average + self.δ)
+            U_min[tick][cloud_id] = min_except_zero(U[:tick + 1, cloud_id])
+            L_max[tick][cloud_id] = max_except_zero(L[:tick + 1, cloud_id])
             changed_tick = None
-            last_changed_tick = self.last_change_tick[cloud_id]
             changed_tick_trace = ''
-            if U[tick, cloud_id] - U_min[tick, cloud_id] >= self.b_increase:
+            if U[tick][cloud_id] - U_min[tick][cloud_id] >= self.b_increase:
                 # changed_tick = ChangePoint(argmin_except_zero(U[:tick + 1, cloud_id]) , ChangePoint.INCREASE)
                 # changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} U[:tick + 1 cloud_id]=U[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(U[:tick + 1, cloud_id]) if value != 0]} argmin={changed_tick.tick}"
                 changed_tick = ChangePoint(tick, ChangePoint.INCREASE)
-                changed_tick_trace = f"U[{tick},{cloud_id}]-U_min[{tick},{cloud_id}]={U[tick,cloud_id]}-{U_min[tick,cloud_id]}={tick}/{tick+1}*{find_exists_value_backward(U, tick, cloud_id)}+{latency_current}-np.average({latency_except_zero})-{self.δ}={U[tick,cloud_id]-U_min[tick,cloud_id]}"
-            if L_max[tick, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
+                changed_tick_trace = f"U[{tick},{cloud_id}]-U_min[{tick},{cloud_id}]={U[tick,cloud_id]}-{U_min[tick,cloud_id]}={tick}/{tick+1}*{u_previous}+{latency_current}-np.average({latency_except_zero.tolist()})-{self.δ}={U[tick,cloud_id]-U_min[tick,cloud_id]}"
+            if L_max[tick][cloud_id] - L[tick][cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
                     self.save_matrix_as_csv(U_min, 'U_min.csv')
@@ -326,12 +329,12 @@ class AW_CUCB:
                     self.save_matrix_as_csv(L, 'L.csv')
                     logger.info(f'latency_timed[self.last_change_tick[cloud_id]:tick]: \n{latency_timed[self.last_change_tick[cloud_id]:tick]}')
                     logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
-                    logger.info(f'\nU[tick, cloud_id] - U_min[tick-1, cloud_id]: {U[tick, cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick, cloud_id]: {L_max[tick-1, cloud_id] - L[tick, cloud_id]}')
+                    logger.info(f'\nU[tick][cloud_id] - U_min[tick-1, cloud_id]: {U[tick][cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick][cloud_id]: {L_max[tick-1, cloud_id] - L[tick][cloud_id]}')
                     raise RuntimeError(f'tick: {tick}, could_id: {cloud_id}, U and L both changed, this should not happen')
                 # changed_tick = ChangePoint(argmax_except_zero(L[:tick + 1, cloud_id]), ChangePoint.DECREASE)
                 # changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} L[:tick + 1 cloud_id]=L[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(L[:tick + 1, cloud_id]) if value != 0]} argmax={changed_tick.tick}"
                 changed_tick = ChangePoint(tick, ChangePoint.DECREASE)
-                changed_tick_trace = f"L_max[{tick},{cloud_id}]-L[{tick},{cloud_id}]={L_max[tick,cloud_id]}-{L[tick,cloud_id]}={L_max[tick,cloud_id]}-({tick}/{tick+1}*{find_exists_value_backward(L, tick, cloud_id)}+{latency_current}-np.average({latency_except_zero})+{self.δ})={L_max[tick,cloud_id]-L[tick,cloud_id]}"
+                changed_tick_trace = f"L_max[{tick},{cloud_id}]-L[{tick},{cloud_id}]={L_max[tick,cloud_id]}-{L[tick,cloud_id]}={L_max[tick,cloud_id]}-({tick}/{tick+1}*{l_previous}+{latency_current}-np.average({latency_except_zero.tolist()})+{self.δ})={L_max[tick,cloud_id]-L[tick,cloud_id]}"
             # if changed_tick != None:
             #     logger.info(f'tick: {tick}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
