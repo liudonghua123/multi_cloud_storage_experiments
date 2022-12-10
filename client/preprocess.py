@@ -36,7 +36,7 @@ class spinner_context:
     def __exit__(self, exc_type, exc_value, traceback):
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
-def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1):
+def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024):
     
     """
     Process the input file and output the result to the output file. 
@@ -51,9 +51,12 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     file_input (str): the input file path
     file_output (str): the output file path
     limit (bool): whether to apply limit operation
-    limit_lower (int): the limit lower bound
-    limit_upper (int): the limit upper bound
-    limit_percent (float): the limit percent
+    limit_lower (int): the limit lower bound for the amount of lines in each second
+    limit_upper (int): the limit upper bound for the amount of lines in each second
+    limit_percent (float): the limit percent for the amount of lines in each second
+    size_control (bool): whether to apply size control operation
+    size_lower (int): the size lower bound for data to filter 
+    size_upper (int): the size upper bound for data to filter
     
     Returns:
     None
@@ -71,7 +74,7 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     # process the file_input
     with spinner_context(f'Processing {file_input} ...') as spinner, open(file_input) as fin:
         # update the spinner text to show the progress in 00.01% minimum
-        update_tick = int(file_input_lines / 10000 or 100)
+        update_tick = int(file_input_lines / 1000 if file_input_lines > 1000 else 100)
         for index, line in enumerate(fin):
             # insert the parsed human readable datetime string of the first column at index 1
             # the last column contains the newline character, keep it
@@ -108,12 +111,29 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
         with spinner_context(f'Limiting lines to limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent} in each second'):
             lines = limit_lines_by_timestamp(lines, limit_lower, limit_upper, limit_percent)
         print(f'After limiting, {len(lines)} lines left')
+        
+    # Filter by size
+    if size_control:
+        with spinner_context(f'Filtering lines by size size_lower: {size_lower}, size_upper: {size_upper}'):
+            lines = filter_lines_by_size(lines, size_lower, size_upper)
+        print(f'After filtering size, {len(lines)} lines left')
     
     # Save the processed lines to the file_output
     with spinner_context('Saving the results ...'), open(file_output, 'w') as fout:
         for line in lines:
             fout.write(','.join(line))
-    print(f'Saved to: {file_output}')
+    print(f'Saved to: {file_output}') 
+
+def filter_lines_by_size(lines, size_lower, size_upper):
+    # use pandas to filter the lines by size
+    # https://www.geeksforgeeks.org/ways-to-filter-pandas-dataframe-by-column-values/
+    # https://www.geeksforgeeks.org/filter-pandas-dataframe-with-multiple-conditions/
+    # dataFrame[(dataFrame['Salary']>=100000) & (dataFrame['Age']<40) & dataFrame['JOB'].str.startswith('P')][['Name','Age','Salary']]
+    df = pd.DataFrame(lines)
+    print(f'\ndf.head(): {df.head()}, df.shape: {df.shape}, len(lines): {len(lines)}\n')
+    # the size is in the 7th column, index 6
+    df = df[(df[6].astype(int) >= size_lower) & (df[6].astype(int) <= size_upper)]
+    return df.values.tolist()
 
 def limit_lines_by_timestamp(lines, limit_lower, limit_upper, limit_percent):
     # use pandas groupby to group the lines by the timestamp in seconds
