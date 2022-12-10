@@ -221,7 +221,7 @@ class TestData:
         logger.info(f'file_input_lines: {self.file_input_lines}, initial timestamp: {self.initial_timestamp}')
         with open(self.file_path) as fin, spinner_context('Processing the data ...') as spinner:
             # update the spinner text to show the progress in 00.01% minimum
-            update_tick = int(self.file_input_lines / 100)
+            update_tick = int(self.file_input_lines / 100) or 100
             write_processed_count = 0
             for index, line in enumerate(fin):
                 timestamp,_,_,_,operation_type,offset,size,_ = line.split(',')
