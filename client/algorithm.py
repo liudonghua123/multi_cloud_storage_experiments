@@ -316,7 +316,7 @@ class AW_CUCB:
                 # changed_tick = ChangePoint(argmin_except_zero(U[:tick + 1, cloud_id]) , ChangePoint.INCREASE)
                 # changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} U[:tick + 1 cloud_id]=U[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(U[:tick + 1, cloud_id]) if value != 0]} argmin={changed_tick.tick}"
                 changed_tick = ChangePoint(tick, ChangePoint.INCREASE)
-                changed_tick_trace = f"U[{tick},{cloud_id}]-U_min[{tick},{cloud_id}]={U[tick,cloud_id]}-{U_min[tick,cloud_id]}={U[tick,cloud_id]-U_min[tick,cloud_id]}"
+                changed_tick_trace = f"U[{tick},{cloud_id}]-U_min[{tick},{cloud_id}]={U[tick,cloud_id]}-{U_min[tick,cloud_id]}={tick}/{tick+1}*{find_exists_value_backward(U, tick, cloud_id)}+{latency_current}-np.average({latency_except_zero})-{self.δ}={U[tick,cloud_id]-U_min[tick,cloud_id]}"
             if L_max[tick, cloud_id] - L[tick, cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
@@ -331,7 +331,7 @@ class AW_CUCB:
                 # changed_tick = ChangePoint(argmax_except_zero(L[:tick + 1, cloud_id]), ChangePoint.DECREASE)
                 # changed_tick_trace = f"cloud_id:{cloud_id} tick:{tick} L[:tick + 1 cloud_id]=L[:{tick + 1} {cloud_id}]={[f'{index}:{value}' for index,value in enumerate(L[:tick + 1, cloud_id]) if value != 0]} argmax={changed_tick.tick}"
                 changed_tick = ChangePoint(tick, ChangePoint.DECREASE)
-                changed_tick_trace = f"L_max[{tick},{cloud_id}]-L[{tick},{cloud_id}]={L_max[tick,cloud_id]}-{L[tick,cloud_id]}={L_max[tick,cloud_id]-L[tick,cloud_id]}"
+                changed_tick_trace = f"L_max[{tick},{cloud_id}]-L[{tick},{cloud_id}]={L_max[tick,cloud_id]}-{L[tick,cloud_id]}={L_max[tick,cloud_id]}-({tick}/{tick+1}*{find_exists_value_backward(L, tick, cloud_id)}+{latency_current}-np.average({latency_except_zero})+{self.δ})={L_max[tick,cloud_id]-L[tick,cloud_id]}"
             # if changed_tick != None:
             #     logger.info(f'tick: {tick}, cloud_id: {cloud_id}, changed_tick: {changed_tick}')
             changed_ticks.append(changed_tick)
