@@ -49,6 +49,19 @@ discount_factor = config['algorithm_params']['discount_factor']
 
 init_request_retries_session(cloud_providers, max_retries)
 
+def check_cloud_providers(cloud_providers):
+    # use request.get to check if the cloud provider is available
+    import requests
+    for cloud_provider in cloud_providers:
+        with spinner_context(f'check cloud provider {cloud_provider} ...') as spinner:
+            res = requests.get(f'{cloud_provider}/')
+            if res.status_code != 200:
+                logger.error('cloud provider is not available, res: {res.text}')
+                raise RuntimeError('cloud provider is not available')
+            spinner.succeed(f'cloud provider {cloud_provider} is available, returns {res.text}')
+            
+check_cloud_providers(cloud_providers)
+
 @dataclass
 class FileMetadata:
     offset: int
