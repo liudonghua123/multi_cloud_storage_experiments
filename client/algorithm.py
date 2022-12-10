@@ -162,6 +162,8 @@ class AW_CUCB:
             # Update statistics in time-window Wi(t) according to (17);
             # choosed_cloud_ids = np.where(placement_policy == 1)[0]
             eit_trace: list[str]= []
+            liwi_trace: list[str]= []
+            u_hat_it_trace: list[str]= []
             for cloud_id in choosed_cloud_ids:
                 # start_tick = max(0, tick - window_sizes[cloud_id])
                 start_tick = find_window_sized_index(window_sizes[cloud_id], placement_policy_timed[:tick + 1, cloud_id], self.last_change_tick[cloud_id])
@@ -176,15 +178,20 @@ class AW_CUCB:
                 # Estimate/Update the utility bound for each i ∈ [N], TODO: update uit # latency / data_size
                 # np_array[:]=list() will not change the datetype of np_array, while np_array=list() will change.
                 # however, if some operands are np_array, then np_array=a*b+c will keep the datetype of np_array
+                liwi_trace.append(f'start_tick=find_window_sized_index({window_sizes[cloud_id]},{placement_policy_timed[:tick + 1, cloud_id]},{self.last_change_tick[cloud_id]})={start_tick}, liwi[{cloud_id}]=1/{Tiwi[cloud_id]}*sum({latency_cloud_previous})={liwi[cloud_id]}')
                 if trace_data.file_read:
                     u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id]) - eit[cloud_id]
+                    u_hat_it_trace.append(f'u_hat_it[{cloud_id}]={self.ψ1}*{liwi[cloud_id]}+{self.ψ2}*({trace_data.file_size}/1024/1024/1024/{self.k}*{outbound_cost[cloud_id]})-{eit[cloud_id]}={u_hat_it[cloud_id]}')
                 else:
                     u_hat_it[cloud_id] = self.ψ1 * liwi[cloud_id] + self.ψ2 * (trace_data.file_size / 1024 / 1024 / 1024 / self.k * storage_cost[cloud_id]) - eit[cloud_id]
+                    u_hat_it_trace.append(f'u_hat_it[{cloud_id}]={self.ψ1}*{liwi[cloud_id]}+{self.ψ2}*({trace_data.file_size}/1024/1024/1024/{self.k}*{storage_cost[cloud_id]})-{eit[cloud_id]}={u_hat_it[cloud_id]}')
             
             trace_data.LB = LB.tolist()
             trace_data.eit = eit.tolist()
             trace_data.u_hat_it = u_hat_it.tolist()
             trace_data.eit_trace = '   '.join(eit_trace)
+            trace_data.liwi_trace = '   '.join(liwi_trace)
+            trace_data.u_hat_it_trace = '   '.join(u_hat_it_trace)
             logger.info(f"tick: {tick}, u_hat_it: {u_hat_it}")
             if trace_data.file_read:
                 post_reward = self.ψ1 * trace_data.latency + self.ψ2 * sum(map(lambda cloud_id: trace_data.file_size / 1024 / 1024 / 1024 / self.k * outbound_cost[cloud_id], choosed_cloud_ids))

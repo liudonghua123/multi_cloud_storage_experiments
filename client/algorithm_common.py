@@ -143,6 +143,8 @@ class TraceData:
     eit_trace: str = ''
     latency_policy: list[float] = None
     decision_metrics: list[float] = None
+    liwi_trace: list[str] = None
+    u_hat_it_trace: list[str] = None
     
 def get_file_line_count(file_path):
     with open(file_path, 'rb') as fp:
