@@ -33,6 +33,7 @@ write_cost : list[float] = config['write_cost']
 cloud_providers : list[str] = config['cloud_providers']
 debug : bool = config['debug']
 max_retries: int = config['max_retries']
+poor_nodes: list[int] = config['poor_nodes']
 
 # algorithm params
 default_window_size = config['algorithm_params']['default_window_size']
@@ -46,6 +47,7 @@ b_increase = config['algorithm_params']['b_increase']
 b_decrease = config['algorithm_params']['b_decrease']
 δ = config['algorithm_params']['δ']
 discount_factor = config['algorithm_params']['discount_factor']
+size_enlarge = config['algorithm_params']['size_enlarge']
 
 init_request_retries_session(cloud_providers, max_retries)
 
@@ -174,7 +176,7 @@ class TestData:
     '''
     
     
-    def __init__(self, file_path: str, N=6, n=3, k=2, size_enlarge=100):
+    def __init__(self, file_path: str, N=N, n=n, k=k, size_enlarge=size_enlarge):
         '''
         file_path: the path of the test data file
         '''
@@ -233,7 +235,10 @@ class TestData:
                 size = int(size) * self.size_enlarge
                 # size = 1024 * 1024 * 10
                 read = operation_type == 'Read'
-                initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
+                
+                # Exclude the poor performance nodes, currently only exclude node 4 (fifth node)
+                # initial_optimized_placement = list(itertools.combinations(range(self.N), self.n))
+                initial_optimized_placement = list(itertools.combinations(list(set(range(self.N))-set(poor_nodes)), self.n))
                 # For the first len(initial_optimized_placement) trace data, overwrite write operation ignore the same file_id
                 # Not need metadata info
                 if index < len(initial_optimized_placement):
