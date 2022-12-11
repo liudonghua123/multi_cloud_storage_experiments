@@ -144,6 +144,17 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
         with spinner_context('Sort the lines ...'):
             lines.sort(key=lambda line: (reversor(line[operation_field_index]), line[0]))
         print(f"sorted {len(lines)} lines")
+        
+    # Report the read and write count
+    with spinner_context('Counting the read/write ...'):
+        read_count = 0
+        write_count = 0
+        for line in lines:
+            if line[operation_field_index] == 'Read':
+                read_count += 1
+            else:
+                write_count += 1
+    print(f"read_count: {read_count}, write_count: {write_count}")
     
     # WRITING...
     # Save the processed lines to the file_output
