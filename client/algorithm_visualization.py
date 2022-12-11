@@ -84,7 +84,7 @@ subplot: bool = config["algorithm_visualization"]["subplot"]
 node_statistics: bool = config["algorithm_visualization"]["node_statistics"]
 # 扩展指标
 extra_metrics: list[str] = config["algorithm_visualization"]["extra_metrics"]
-# 是否严格模式, 严格模式下, 会使用所有数据的最小集进行比较
+# 是否严格模式, 严格模式下, 会使用所有数据的最小集进行比较, 此外还会严格检查比较算法的数据文件是否存在
 strict: bool = config["algorithm_visualization"]["strict"]
 
 # 美化图表，使用 seaborn styles
@@ -204,11 +204,21 @@ def main(
   if not exists(input_dir):
     print(f"input_dir: {input_dir} does not exist.")
     return -1
+  # in strict mode, the data file of algorithms specified must be exists, or else raise error
+  availabe_algorithms = []
   # check the trace_data_latency.csv for each algorithm exists
   for algorithm in algorithms:
     if not exists(join(input_dir, f"trace_data_latency_{algorithm}.csv")):
-      print(f"trace_data_latency_{algorithm}.csv does not exist.")
-      return -1
+      if strict:
+        raise(f"trace_data_latency_{algorithm}.csv does not exist.")
+      else:
+        continue
+    else:
+      availabe_algorithms.append(algorithm)
+  if len(availabe_algorithms) < len(algorithms):
+    print(f'algorithms: {set(algorithms) - set(availabe_algorithms)} does not have trace_data_latency.csv, so they are not visualized.')
+  # resign the algorithms to the available algorithms
+  algorithms = availabe_algorithms
   # read the trace_data_latency.csv for each algorithm into a dataframe, and then visualize the dataframe
   # use the first algorithm's tick, request_datetime
   df = pd.read_csv(join(input_dir, f"trace_data_latency_{algorithms[0]}.csv"))
