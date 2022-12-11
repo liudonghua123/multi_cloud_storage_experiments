@@ -43,7 +43,7 @@ class AW_CUCB:
     def __init__(self, data: list[TraceData], file_metadata: dict[int: FileMetadata], 
                  default_window_size=default_window_size, N=N, n=n, k=k, 
                  ψ1=ψ1, ψ2=ψ2, ξ=ξ, b_increase=b_increase, b_decrease=b_decrease, δ=δ, 
-                 LB=None, suffix=''):
+                 LB=None, suffix='', migration=True):
         logger.info(f'AW_CUCB, default_window_size: {default_window_size}, N: {N}, n: {n}, k: {k}, ψ1: {ψ1}, ψ2: {ψ2}, ξ: {ξ}, b_increase: {b_increase}, b_decrease: {b_decrease}, δ: {δ}, LB: {LB}, suffix: {suffix}')
         self.data = data
         self.default_window_size = default_window_size
@@ -61,6 +61,8 @@ class AW_CUCB:
         self.δ = δ
         self.LB = LB
         self.suffix = suffix
+        self.migration = migration
+        self.migration_suffix = '' if self.migration else '_no_migration'
         self.migration_records: list[MigrationRecord] = []
         self.change_point_records: list[ChangePointRecord] = []
         self.last_change_tick: list[int] = [0] * self.N
@@ -229,7 +231,7 @@ class AW_CUCB:
                 τ = np.array([value if value != 0 else τ[index] for index, value in enumerate(changed_ticks)])
                 logger.info(f'tick: {tick}, τ: {τ}')
                 # if read operation
-                if trace_data.file_read:
+                if trace_data.file_read and self.migration:
                     # LDM(St', St), ST: current placement_policy, ST': the previous placement_policy
                     self.LDM(tick, trace_data, St_hat, St)
             # update window size according to τ
@@ -324,10 +326,10 @@ class AW_CUCB:
             if L_max[tick][cloud_id] - L[tick][cloud_id] >= self.b_decrease:
                 if changed_tick != None:
                     #save the U_min and L_max, U and L matrix        
-                    self.save_matrix_as_csv(U_min, 'U_min.csv')
-                    self.save_matrix_as_csv(L_max, 'L_max.csv')
-                    self.save_matrix_as_csv(U, 'U.csv')
-                    self.save_matrix_as_csv(L, 'L.csv')
+                    self.save_matrix_as_csv(U_min, 'U_min{self.migration_suffix}.csv')
+                    self.save_matrix_as_csv(L_max, 'L_max{self.migration_suffix}.csv')
+                    self.save_matrix_as_csv(U, 'U{self.migration_suffix}.csv')
+                    self.save_matrix_as_csv(L, 'L{self.migration_suffix}.csv')
                     logger.info(f'latency_timed[self.last_change_tick[cloud_id]:tick]: \n{latency_timed[self.last_change_tick[cloud_id]:tick]}')
                     logger.info(f'\nU[:tick + 1]: \n{U[:tick + 1]}, \nL[:tick + 1]: \n{L[:tick + 1]}, \nU_min[:tick]: \n{U_min[:tick]}, \nL_max[:tick]: \n{L_max[:tick]}')
                     logger.info(f'\nU[tick][cloud_id] - U_min[tick-1, cloud_id]: {U[tick][cloud_id] - U_min[tick-1, cloud_id]}\nL_max[tick-1, cloud_id] - L[tick][cloud_id]: {L_max[tick-1, cloud_id] - L[tick][cloud_id]}')
@@ -399,10 +401,10 @@ class AW_CUCB:
                 detected_ticks.append(tick)
                 logger.info(f'tick: {tick}, changed_ticks: {changed_ticks}')
         logger.info(f'self.δ: {self.δ}, detected_ticks count: {len(detected_ticks)}, {detected_ticks}')
-        self.save_matrix_as_csv(U_min, 'U_min.csv')
-        self.save_matrix_as_csv(L_max, 'L_max.csv')
-        self.save_matrix_as_csv(U, 'U.csv')
-        self.save_matrix_as_csv(L, 'L.csv')
+        self.save_matrix_as_csv(U_min, 'U_min{self.migration_suffix}.csv')
+        self.save_matrix_as_csv(L_max, 'L_max{self.migration_suffix}.csv')
+        self.save_matrix_as_csv(U, 'U{self.migration_suffix}.csv')
+        self.save_matrix_as_csv(L, 'L{self.migration_suffix}.csv')
         
     # save the matrix as csv file
     def save_matrix_as_csv(self, matrix, file_name):
@@ -416,7 +418,7 @@ class AW_CUCB:
         results_dir = join(dirname(realpath(__file__)), f'results_{self.suffix}')
         makedirs(results_dir, exist_ok=True)
         # save the migration records
-        with open(f'{results_dir}/migration_records_aw_cucb.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/migration_records_aw_cucb{self.migration_suffix}.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             # {*[]} is empty set, same as set(), {*()}, {*{}}
             # customization the exclude list like {'id'}
@@ -434,14 +436,14 @@ class AW_CUCB:
             trace_data.post_cost_accumulation = post_cost_accumulation[index]
             # trace_data.u_hat_it = '   '.join(map(float_to_string, trace_data.u_hat_it))
         # save the trace data with latency
-        with open(f'{results_dir}/trace_data_latency_aw_cucb.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/trace_data_latency_aw_cucb{self.migration_suffix}.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = OrderedSet(TraceData.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
             for index, trace_data in enumerate(filter(lambda trace_data: trace_data.tick != -1, self.data)):
                 writer.writerow([getattr(trace_data, column) for column in header])
         # save the change points
-        with open(f'{results_dir}/change_points_aw_cucb.csv', 'w', newline='') as csvfile:
+        with open(f'{results_dir}/change_points_aw_cucb{self.migration_suffix}.csv', 'w', newline='') as csvfile:
             writer = csv.writer(csvfile)
             header = OrderedSet(ChangePointRecord.__dataclass_fields__.keys()) - {*[]}
             writer.writerow(header)
@@ -450,7 +452,7 @@ class AW_CUCB:
         # self.save_matrix_as_csv(self.window_sizes_timed, 'results/window_sizes_timed.csv')
     
     
-def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt'), only_preprocess: bool = False):
+def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt'), only_preprocess: bool = False, migration: bool = True):
     # parsing the input file data
     test_data = TestData(input_file)
     data, file_metadata = test_data.load_data()
@@ -461,7 +463,7 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     if not only_preprocess:
         start_time = time.time()
         suffix = basename(input_file).split('.')[0]
-        algorithm = AW_CUCB(data, file_metadata, suffix=suffix)
+        algorithm = AW_CUCB(data, file_metadata, suffix=suffix, migration=migration)
         algorithm.processing()
         logger.info(f'processing finished')
         algorithm.save_result()
