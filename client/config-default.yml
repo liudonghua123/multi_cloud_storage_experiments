@@ -84,6 +84,7 @@ algorithm_visualization:
   # 比较的算法
   algorithms:
     - aw_cucb
+    - aw_cucb_no_migration
     - simple
     - ewma
     - random
