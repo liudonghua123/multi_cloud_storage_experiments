@@ -181,20 +181,22 @@ def filter_lines_by_rw_ratio(lines, rw_ration, operation_field_index=4):
     # For the same example rw_ration is 0.5, then we need to use 50 read and 100 write.
     # 100(read)/2(rw_ration) = 50(write) < 100(write).
     if read_count / rw_ration < write_count:
-        print(f'rw_ratio: {rw_ration}, read_count: {read_count}, write_count: {write_count}, read is more then write according to the ratio, filter out the write')
+        print(f'rw_ratio: {rw_ration}, read_count: {read_count}, write_count: {write_count}, write is more then read according to the ratio, filter out some write')
         actural_read = read_count
         actural_write = int(actural_read / rw_ration)
     else:
-        print(f'rw_ratio: {rw_ration}, read_count: {read_count}, write_count: {write_count}, write is more then read according to the ratio, filter out the read')
+        print(f'rw_ratio: {rw_ration}, read_count: {read_count}, write_count: {write_count}, read is more then write according to the ratio, filter out the read')
         actural_write = write_count
         actural_read = int(actural_write * rw_ration)
     # Filter the lines by the read/write ratio
     results = []
     for line in lines:
-        if line[operation_field_index] == 'Read' and actural_read > 0:
+        if line[operation_field_index] == 'Read':
+            if actural_read > 0:
                 results.append(line)
                 actural_read -= 1
-        elif actural_write > 0:
+        else:
+            if actural_write > 0:
                 results.append(line)
                 actural_write -= 1
     return results
