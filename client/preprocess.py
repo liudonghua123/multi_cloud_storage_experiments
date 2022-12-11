@@ -22,6 +22,16 @@ def get_file_line_count(file_path):
         count = sum(buffer.count(b'\n') for buffer in content_generator)
         return count
 
+def get_read_write_count(lines: list[list[str]], operation_field_index: int = 4):
+    read_count = 0
+    write_count = 0
+    for line in lines:
+        if line[operation_field_index] == 'Read':
+            read_count += 1
+        else:
+            write_count += 1
+    return read_count, write_count
+
 class reversor:
     def __init__(self, obj):
         self.obj = obj
@@ -43,7 +53,8 @@ class spinner_context:
     def __exit__(self, exc_type, exc_value, traceback):
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
-def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
+
+def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, rw_ration: float = 0, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
     
     """
     Process the input file and output the result to the output file. 
@@ -64,6 +75,7 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
     size_control (bool): whether to apply size control operation
     size_lower (int): the size lower bound for data to filter 
     size_upper (int): the size upper bound for data to filter
+    rw_ration (float): the ratio of read/write, 0 means no filter
     add_timestamp (bool): whether to add timestamp to the output file
     sort_by_timestamp_and_write (bool): whether to sort the output file by the timestamp then the write/read
     sort_by_write_and_timestamp (bool): whether to sort the output file by the write/read then the timestamp
@@ -139,6 +151,12 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
             lines.sort(key=lambda line: (line[0], reversor(line[operation_field_index])))
         print(f"sorted {len(lines)} lines")
     
+    # filter by rw_ratio
+    if rw_ration:
+        with spinner_context(f'Filtering lines by rw_ration: {rw_ration}'):
+            lines = filter_lines_by_rw_ratio(lines, rw_ration, operation_field_index)
+        print(f'After filtering rw_ratio, {len(lines)} lines left')
+    
     # Sort the lines by the write
     if sort_by_write_and_timestamp:
         with spinner_context('Sort the lines ...'):
@@ -147,13 +165,7 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
         
     # Report the read and write count
     with spinner_context('Counting the read/write ...'):
-        read_count = 0
-        write_count = 0
-        for line in lines:
-            if line[operation_field_index] == 'Read':
-                read_count += 1
-            else:
-                write_count += 1
+        read_count , write_count = get_read_write_count(lines, operation_field_index)
     print(f"read_count: {read_count}, write_count: {write_count}")
     
     # WRITING...
@@ -162,6 +174,30 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
         for line in lines:
             fout.write(','.join(line))
     print(f'Saved to: {file_output}') 
+
+def filter_lines_by_rw_ratio(lines, rw_ration, operation_field_index=4):
+    read_count , write_count = get_read_write_count(lines, operation_field_index)
+    # For example, if read_count is 100, write_count is 100, and rw_ration is 2, then we need to use 100 read and 50 write.
+    # For the same example rw_ration is 0.5, then we need to use 50 read and 100 write.
+    # 100(read)/2(rw_ration) = 50(write) < 100(write).
+    if read_count / rw_ration < write_count:
+        print(f'rw_ratio: {rw_ration}, read_count: {read_count}, write_count: {write_count}, read is more then write according to the ratio, filter out the write')
+        actural_read = read_count
+        actural_write = int(actural_read / rw_ration)
+    else:
+        print(f'rw_ratio: {rw_ration}, read_count: {read_count}, write_count: {write_count}, write is more then read according to the ratio, filter out the read')
+        actural_write = write_count
+        actural_read = int(actural_write * rw_ration)
+    # Filter the lines by the read/write ratio
+    results = []
+    for line in lines:
+        if line[operation_field_index] == 'Read' and actural_read > 0:
+                results.append(line)
+                actural_read -= 1
+        elif actural_write > 0:
+                results.append(line)
+                actural_write -= 1
+    return results
 
 def filter_lines_by_size(lines, size_lower, size_upper):
     # use pandas to filter the lines by size
