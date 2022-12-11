@@ -84,18 +84,20 @@ subplot: bool = config["algorithm_visualization"]["subplot"]
 node_statistics: bool = config["algorithm_visualization"]["node_statistics"]
 # 扩展指标
 extra_metrics: list[str] = config["algorithm_visualization"]["extra_metrics"]
+# 是否严格模式, 严格模式下, 会使用所有数据的最小集进行比较
+strict: bool = config["algorithm_visualization"]["strict"]
 
 # 美化图表，使用 seaborn styles
 # MatplotlibDeprecationWarning: The seaborn styles shipped by Matplotlib are deprecated since 3.6, as they no longer correspond to the styles shipped by seaborn. However, they will remain available as 'seaborn-v0_8-<style>'. Alternatively, directly use the seaborn API instead.
 plt.style.use('seaborn')
 # plt.style.use('seaborn-whitegrid')
 
-def plot_placement_policy(ax, df, algorithms, legend_loc):
+def plot_placement_policy(ax, df, algorithms, legend_loc, strict, line_count):
   statistics_results = { algorithm: {} for algorithm in algorithms }
   # statistics the node frequency
   for algorithm in algorithms:
     # iterate the f'placement_policy_{algorithm}' column
-    for data in df[f'placement_policy_{algorithm}']:
+    for data in df[:line_count][f'placement_policy_{algorithm}']:
       nodes = map(int, data.split('_'))
       for node in nodes:
         if node not in statistics_results[algorithm]:
@@ -122,6 +124,8 @@ def visualization_from_dataframe(
     metrics: list[str],
     subplot: bool,
     legend_loc: str,
+    strict: bool,
+    line_count: int,
 ):
   logger.info(f'''visualization_from_dataframe df.shape: {df.shape}, 
     df.columns: {df.columns}, len(df): {len(df)}, df.head(): {df.head()}''')
@@ -130,8 +134,8 @@ def visualization_from_dataframe(
   if subplot:
     def plot_metric(ax, metric, df, algorithms, legend_loc):
       for algorithm in algorithms:
-        x = df["tick"]
-        y = df[f'{metric}_{algorithm}']
+        x = df[:line_count]["tick"] if strict else df["tick"]
+        y = df[:line_count][f'{metric}_{algorithm}'] if strict else df[f'{metric}_{algorithm}']
         ax.plot(x, y, label=f'{algorithm}', mouseover=True)
         ax.set_title(metric, fontweight="bold")
         ax.legend(loc=legend_loc, shadow=True)
@@ -144,14 +148,14 @@ def visualization_from_dataframe(
     # for extra_metrics
     for ax, metric in zip(axes[len(metrics):], extra_metrics):
       if metric == "placement_policy":
-        plot_placement_policy(ax, df, algorithms, legend_loc)
+        plot_placement_policy(ax, df, algorithms, legend_loc, strict, line_count)
     plt.show()
   else:
     def plot_metric(metric, df, algorithms, legend_loc):
       plt.figure()
       for algorithm in algorithms:
-        x = df["tick"]
-        y = df[f'{metric}_{algorithm}']
+        x = df[:line_count]["tick"] if strict else df["tick"]
+        y = df[:line_count][f'{metric}_{algorithm}'] if strict else df[f'{metric}_{algorithm}']
         # https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
         plt.plot(x, y, label=f'{algorithm}', mouseover=True)
       plt.title(metric, fontweight="bold")
@@ -176,6 +180,7 @@ def main(
     metrics: list[str] = metrics,
     subplot: bool = subplot,
     legend_loc: str = "upper right",
+    strict: bool = strict,
 ):
   """
   Visualize the different algorithms' results.
@@ -194,7 +199,7 @@ def main(
   """
   # print the arguments
   logger.info(
-    f'arguments passed are input_dir: {input_dir}, algorithms: {algorithms}, metrics: {metrics}, subplot: {subplot}, legend_loc: {legend_loc}')
+    f'arguments passed are input_dir: {input_dir}, algorithms: {algorithms}, metrics: {metrics}, subplot: {subplot}, legend_loc: {legend_loc}, strict: {strict}')
   # check input_dir exists
   if not exists(input_dir):
     print(f"input_dir: {input_dir} does not exist.")
@@ -212,15 +217,17 @@ def main(
   # change column names, add algorithm name as suffix
   # https://datascienceparichay.com/article/pandas-rename-column-names/
   df = df.rename(columns=lambda x: f"{x}_{algorithms[0]}")
+  line_count = len(df)
   combined_df = pd.concat(
     [combined_df, df[[*map(lambda x: f"{x}_{algorithms[0]}", [*metrics, *extra_metrics])]]], axis=1)
   for algorithm in algorithms[1:]:
     df = pd.read_csv(join(input_dir, f"trace_data_latency_{algorithm}.csv"))
     df = df.rename(columns=lambda x: f"{x}_{algorithm}")
+    line_count = min(line_count, len(df))
     combined_df = pd.concat(
       [combined_df, df[[*map(lambda x: f"{x}_{algorithm}", [*metrics, *extra_metrics])]]], axis=1)
   visualization_from_dataframe(
-    combined_df, algorithms, metrics, subplot, legend_loc)
+    combined_df, algorithms, metrics, subplot, legend_loc, strict, line_count)
   return 0
 
 

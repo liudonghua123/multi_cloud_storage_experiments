@@ -98,4 +98,6 @@ algorithm_visualization:
   # 扩展指标, 不直接参与比较, 一般需要处理后才能使用
   extra_metrics: 
     - placement_policy
+  # 是否严格模式, 严格模式下, 会使用所有数据的最小集进行比较
+  strict: False
   
