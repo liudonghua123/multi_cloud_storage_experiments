@@ -43,7 +43,7 @@ class spinner_context:
     def __exit__(self, exc_type, exc_value, traceback):
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
-def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = False, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
+def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
     
     """
     Process the input file and output the result to the output file. 
