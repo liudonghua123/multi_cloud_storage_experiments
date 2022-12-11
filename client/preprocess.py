@@ -22,6 +22,13 @@ def get_file_line_count(file_path):
         count = sum(buffer.count(b'\n') for buffer in content_generator)
         return count
 
+class reversor:
+    def __init__(self, obj):
+        self.obj = obj
+    def __eq__(self, other):
+        return other.obj == self.obj
+    def __lt__(self, other):
+        return other.obj < self.obj
 class spinner_context:
     def __init__(self, start_text: str, end_text: str = None, spinner_indicator: str = 'dots'):
         self.start_text = start_text
@@ -36,11 +43,11 @@ class spinner_context:
     def __exit__(self, exc_type, exc_value, traceback):
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
-def process(file_input: str = 'client/test.txt', file_output: str = 'processed.txt', add_timestamp: bool = True, sort_by_timestamp_and_write: bool = True, limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024):
+def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = False, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
     
     """
     Process the input file and output the result to the output file. 
-    READ->PROCESS->SORT[->LIMIT]->WRITE
+    READ->PROCESS[->ADD_HUMNAN_READABLE_TIMESTAMP][->LIMIT][->SIZE_CONTROL]->SORT->WRITE
 
     This function will read the input file line by line, and process each line, insert a hunman readable timestamp.
     Then sort the lines by the timestamp, and limit the lines by the timestamp if the limit > 0 
@@ -50,8 +57,6 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     Parameters:
     file_input (str): the input file path
     file_output (str): the output file path
-    add_timestamp (bool): whether to add timestamp to the output file
-    sort_by_timestamp_and_write (bool): whether to sort the output file by the timestamp and write
     limit (bool): whether to apply limit operation
     limit_lower (int): the limit lower bound for the amount of lines in each second
     limit_upper (int): the limit upper bound for the amount of lines in each second
@@ -59,13 +64,16 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     size_control (bool): whether to apply size control operation
     size_lower (int): the size lower bound for data to filter 
     size_upper (int): the size upper bound for data to filter
+    add_timestamp (bool): whether to add timestamp to the output file
+    sort_by_timestamp_and_write (bool): whether to sort the output file by the timestamp then the write/read
+    sort_by_write_and_timestamp (bool): whether to sort the output file by the write/read then the timestamp
     
     Returns:
     None
 
     """
     
-    print(f"Input file: {file_input}, output file: {file_output}, limit: {limit}, limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent}")
+    print(f"Input file: {file_input}, output file: {file_output}, limit: {limit}, limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent}, size_control: {size_control}, size_lower: {size_lower}, size_upper: {size_upper}, add_timestamp: {add_timestamp}, sort_by_timestamp_and_write: {sort_by_timestamp_and_write}, sort_by_write_and_timestamp: {sort_by_write_and_timestamp}")
     
     # calculate the file lines of the file_input
     with spinner_context('Calculate file line count ...') as spinner:
@@ -73,6 +81,8 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
     print(f'file_input: {file_input} count: {file_input_lines}')
     
     lines = []
+    
+    has_human_readable_timestamp = False
     
     # process the file_input, save the splited lines to the lines list
     with spinner_context(f'Processing {file_input}, saveing into lines list ...') as spinner, open(file_input) as fin:
@@ -84,36 +94,12 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
             lines.append(line.split(','))
             if index % update_tick == 0:
                 spinner.text = f'Processing {index / file_input_lines * 100:.2f}%'
+        # use the last line to check if the file_input has human readable timestamp
+        has_human_readable_timestamp = len(line.split(',')) > 7
+    print(f'detected has_human_readable_timestamp: {has_human_readable_timestamp}')
     print(f"processed file_input: {file_input}, {len(lines)} lines")
     
-    if add_timestamp:
-        with spinner_context('Adding hunman readable timestamp ...'):
-            for line in lines:
-                try:
-                    datetime_str = datetime.fromtimestamp(
-                        int(line[0]) / 10 ** 8).strftime('%Y-%m-%d %H:%M:%S.%f')
-                    line.insert(1, datetime_str)
-                except Exception as e:
-                    print(
-                        f'Error parsing line {index}: {line}, line_segements: {line_segements}, skip')
-                    continue
-    
-    # Sort the lines by the timestamp
-    if sort_by_timestamp_and_write:
-        with spinner_context('Sort the lines ...'):
-            # sort the lines by the first column (timestamp, index 0), then the fifth column (Read/Write index 4) in descending order
-            # https://iditect.com/faq/python/how-to-sort-objects-by-multiple-keys.html#How%20to%20sort%20a%20list%20with%20two%20keys%20but%20one%20in%20reverse%20order?
-            class reversor:
-                def __init__(self, obj):
-                    self.obj = obj
-                def __eq__(self, other):
-                    return other.obj == self.obj
-                def __lt__(self, other):
-                    return other.obj < self.obj
-            lines.sort(key=lambda line: (line[0], reversor(line[4])))
-        print(f"sorted {len(lines)} lines")
-    
-    # cut the lines to limit in each second, after sorting
+    # Cut the lines to limit in each second, after sorting
     if limit:
         with spinner_context(f'Limiting lines to limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent} in each second'):
             lines = limit_lines_by_timestamp(lines, limit_lower, limit_upper, limit_percent)
@@ -125,6 +111,41 @@ def process(file_input: str = 'client/test.txt', file_output: str = 'processed.t
             lines = filter_lines_by_size(lines, size_lower, size_upper)
         print(f'After filtering size, {len(lines)} lines left')
     
+    # Add human readable timestamp
+    if add_timestamp:
+        with spinner_context('Adding hunman readable timestamp ...'):
+            for line in lines:
+                # check whether the line has the hunman readable timestamp already
+                if has_human_readable_timestamp:
+                    print(f'file {file_input} first line {line} already has timestamp, skip this process')
+                    break
+                try:
+                    datetime_str = datetime.fromtimestamp(
+                        int(line[0]) / 10 ** 8).strftime('%Y-%m-%d %H:%M:%S.%f')
+                    line.insert(1, datetime_str)
+                except Exception as e:
+                    print(
+                        f'Error parsing line {index}: {line}, skip')
+                    continue
+            has_human_readable_timestamp = True
+            
+    # SORTING...
+    operation_field_index = 4 if has_human_readable_timestamp else 3
+    # Sort the lines by the timestamp
+    if sort_by_timestamp_and_write:
+        with spinner_context('Sort the lines ...'):
+            # sort the lines by the first column (timestamp, index 0), then the fifth column (Read/Write index 4) in descending order
+            # https://iditect.com/faq/python/how-to-sort-objects-by-multiple-keys.html#How%20to%20sort%20a%20list%20with%20two%20keys%20but%20one%20in%20reverse%20order?
+            lines.sort(key=lambda line: (line[0], reversor(line[operation_field_index])))
+        print(f"sorted {len(lines)} lines")
+    
+    # Sort the lines by the write
+    if sort_by_write_and_timestamp:
+        with spinner_context('Sort the lines ...'):
+            lines.sort(key=lambda line: (reversor(line[operation_field_index]), line[0]))
+        print(f"sorted {len(lines)} lines")
+    
+    # WRITING...
     # Save the processed lines to the file_output
     with spinner_context('Saving the results ...'), open(file_output, 'w') as fout:
         for line in lines:
