@@ -86,6 +86,19 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
 
     """
     
+    # normalize the arguments, if some number arguments are passed as expression, evaluate them
+    def normalize_value(arg):
+        result = arg
+        if isinstance(arg, str):
+            result = eval(arg)
+            if isinstance(result, float): 
+                result = float(f'{result:.2f}')
+        elif isinstance(arg, float):
+            result = float(f'{arg:.2f}')
+        return result
+    
+    limit_lower, limit_upper, limit_percent, size_lower, size_upper, rw_ration = map(normalize_value, [limit_lower, limit_upper, limit_percent, size_lower, size_upper, rw_ration])        
+    
     print(f"Input file: {file_input}, output file: {file_output}, limit: {limit}, limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent}, size_control: {size_control}, size_lower: {size_lower}, size_upper: {size_upper}, add_timestamp: {add_timestamp}, sort_by_timestamp_and_write: {sort_by_timestamp_and_write}, sort_by_write_and_timestamp: {sort_by_write_and_timestamp}")
     
     # calculate the file lines of the file_input
