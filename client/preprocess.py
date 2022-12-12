@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from pandas.core.groupby.generic import DataFrameGroupBy
+from os.path import splitext
 
 
 def get_file_line_count(file_path):
@@ -54,7 +55,7 @@ class spinner_context:
         self.spinner.succeed(f'{self.end_text}, took {time.perf_counter() - self.start_time:.2f}s')
 
 
-def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt', limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, rw_ration: float = 0, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
+def process(file_input: str = 'test.txt', file_output: str = None, limit: bool = False, limit_lower: int = 10, limit_upper: int = 100, limit_percent: float = 0.1, size_control: bool = True, size_lower: int = 50 * 1024, size_upper: int = 100 * 1024, rw_ration: float = 0, add_timestamp: bool = True, sort_by_timestamp_and_write: bool = False, sort_by_write_and_timestamp: bool = True):
     
     """
     Process the input file and output the result to the output file. 
@@ -172,6 +173,23 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
     print(f"read_count: {read_count}, write_count: {write_count}")
     
     # WRITING...
+    # If the output file is not specified, then use the input file name with the some operation suffix
+    if not file_output:
+        file_input_name, file_input_extension = splitext(file_input)
+        file_output = f'{file_input_name}'
+        if limit:
+            file_output += f'_limit_{limit_lower}_{limit_upper}_{limit_percent}'
+        if size_control:
+            file_output += f'_size_{size_lower}_{size_upper}'
+        if rw_ration:
+            file_output += f'_rw_{rw_ration}'
+        if sort_by_timestamp_and_write:
+            file_output += f'_sort_t_w'
+        if sort_by_write_and_timestamp:
+            file_output += f'_sort_w_t'
+        if add_timestamp:
+            file_output += f'_timestamped'
+        file_output += file_input_extension
     # Save the processed lines to the file_output
     with spinner_context('Saving the results ...'), open(file_output, 'w') as fout:
         for line in lines:
