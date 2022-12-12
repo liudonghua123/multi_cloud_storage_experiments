@@ -21,7 +21,7 @@ sys.path.append(dirname(dirname(realpath(__file__))))
 from common.utility import spinner_context, get_config, init_request_retries_session
 from common.config_logging import init_logging
 
-logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
+logger = init_logging(join(dirname(realpath(__file__)), "algorithm_common.log"))
 
 config = get_config(dirname(realpath(__file__)))
 logger.info(f"load config: {config}")

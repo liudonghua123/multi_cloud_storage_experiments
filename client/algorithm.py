@@ -19,7 +19,7 @@ sys.path.append(dirname(dirname(realpath(__file__))))
 from common.utility import get_latency, get_latency_sync
 from common.config_logging import init_logging
 
-logger = init_logging(join(dirname(realpath(__file__)), "client.log"))
+logger = init_logging(join(dirname(realpath(__file__)), "algorithm.log"))
     
 # 
 # Use the following variable names to store the data
