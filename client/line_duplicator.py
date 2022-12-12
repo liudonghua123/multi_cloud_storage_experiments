@@ -51,7 +51,7 @@ def main(file_input: str = 'web_2_sized_50000_55000_wp_ration_9.txt', file_outpu
     for line_num in parsed_line_num:
       line: str = lines[line_num]
       if random:
-        copies = np.random.randint(copies_minmum, copies + 1)
+        copies = random.randint(copies_minmum, copies + 1)
       print(f'insert {copies} copies of {line.strip()} after index {line_num}')
       insert_lines(lines, line, line_num, copies, file_lines)
     print(f'saving to {file_output}, {len(lines)} lines...')
