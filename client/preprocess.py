@@ -58,7 +58,7 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
     
     """
     Process the input file and output the result to the output file. 
-    READ->PROCESS[->ADD_HUMNAN_READABLE_TIMESTAMP][->LIMIT][->SIZE_CONTROL]->SORT->WRITE
+    READ->PROCESS[->LIMIT][->SIZE_CONTROL][->RW_RATION][->SORT][->ADD_HUMNAN_READABLE_TIMESTAMP]->WRITE
 
     This function will read the input file line by line, and process each line, insert a hunman readable timestamp.
     Then sort the lines by the timestamp, and limit the lines by the timestamp if the limit > 0 
@@ -111,6 +111,9 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
     print(f'detected has_human_readable_timestamp: {has_human_readable_timestamp}')
     print(f"processed file_input: {file_input}, {len(lines)} lines")
     
+    # calculate the operation_field_index according to the has_human_readable_timestamp
+    operation_field_index = 4 if has_human_readable_timestamp else 3
+    
     # Cut the lines to limit in each second, after sorting
     if limit:
         with spinner_context(f'Limiting lines to limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent} in each second'):
@@ -122,6 +125,26 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
         with spinner_context(f'Filtering lines by size size_lower: {size_lower}, size_upper: {size_upper}'):
             lines = filter_lines_by_size(lines, size_lower, size_upper)
         print(f'After filtering size, {len(lines)} lines left')
+    
+    # filter by rw_ratio
+    if rw_ration:
+        with spinner_context(f'Filtering lines by rw_ration: {rw_ration}'):
+            lines = filter_lines_by_rw_ratio(lines, rw_ration, operation_field_index)
+        print(f'After filtering rw_ratio, {len(lines)} lines left')
+            
+    # Sort the lines by the timestamp
+    if sort_by_timestamp_and_write:
+        with spinner_context('Sort the lines ...'):
+            # sort the lines by the first column (timestamp, index 0), then the fifth column (Read/Write index 4) in descending order
+            # https://iditect.com/faq/python/how-to-sort-objects-by-multiple-keys.html#How%20to%20sort%20a%20list%20with%20two%20keys%20but%20one%20in%20reverse%20order?
+            lines.sort(key=lambda line: (line[0], reversor(line[operation_field_index])))
+        print(f"sorted {len(lines)} lines")
+    
+    # Sort the lines by the write
+    if sort_by_write_and_timestamp:
+        with spinner_context('Sort the lines ...'):
+            lines.sort(key=lambda line: (reversor(line[operation_field_index]), line[0]))
+        print(f"sorted {len(lines)} lines")
     
     # Add human readable timestamp
     if add_timestamp:
@@ -140,28 +163,8 @@ def process(file_input: str = 'test.txt', file_output: str = 'test_processed.txt
                         f'Error parsing line {index}: {line}, skip')
                     continue
             has_human_readable_timestamp = True
-            
-    # SORTING...
-    operation_field_index = 4 if has_human_readable_timestamp else 3
-    # Sort the lines by the timestamp
-    if sort_by_timestamp_and_write:
-        with spinner_context('Sort the lines ...'):
-            # sort the lines by the first column (timestamp, index 0), then the fifth column (Read/Write index 4) in descending order
-            # https://iditect.com/faq/python/how-to-sort-objects-by-multiple-keys.html#How%20to%20sort%20a%20list%20with%20two%20keys%20but%20one%20in%20reverse%20order?
-            lines.sort(key=lambda line: (line[0], reversor(line[operation_field_index])))
-        print(f"sorted {len(lines)} lines")
-    
-    # filter by rw_ratio
-    if rw_ration:
-        with spinner_context(f'Filtering lines by rw_ration: {rw_ration}'):
-            lines = filter_lines_by_rw_ratio(lines, rw_ration, operation_field_index)
-        print(f'After filtering rw_ratio, {len(lines)} lines left')
-    
-    # Sort the lines by the write
-    if sort_by_write_and_timestamp:
-        with spinner_context('Sort the lines ...'):
-            lines.sort(key=lambda line: (reversor(line[operation_field_index]), line[0]))
-        print(f"sorted {len(lines)} lines")
+            # update operation_field_index
+            operation_field_index = 4 if has_human_readable_timestamp else 3
         
     # Report the read and write count
     with spinner_context('Counting the read/write ...'):
