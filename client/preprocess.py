@@ -89,17 +89,24 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
     # normalize the arguments, if some number arguments are passed as expression, evaluate them
     def normalize_value(arg):
         result = arg
+        # if the arg is string, try to evaluate it
         if isinstance(arg, str):
-            result = eval(arg)
+            # https://realpython.com/python-eval-function/#building-a-math-expressions-evaluator
+            # support some common operations, such as +, -, *, /, **, %, //, (, ), abs, max, min, round, int, float and math functions.
+            import math
+            result = eval(arg, {k: v for k, v in math.__dict__.items() if not k.startswith("__")})
+            # if the result is float, only keep 2 decimal places
             if isinstance(result, float): 
                 result = float(f'{result:.2f}')
         elif isinstance(arg, float):
+            # if the arg is float, only keep 2 decimal places
             result = float(f'{arg:.2f}')
         return result
     
+    # normalize the arguments which accept ints or floats, if some number arguments are passed as expression, evaluate them using eval()
     limit_lower, limit_upper, limit_percent, size_lower, size_upper, rw_ration = map(normalize_value, [limit_lower, limit_upper, limit_percent, size_lower, size_upper, rw_ration])        
     
-    print(f"Input file: {file_input}, output file: {file_output}, limit: {limit}, limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent}, size_control: {size_control}, size_lower: {size_lower}, size_upper: {size_upper}, add_timestamp: {add_timestamp}, sort_by_timestamp_and_write: {sort_by_timestamp_and_write}, sort_by_write_and_timestamp: {sort_by_write_and_timestamp}")
+    print(f"Input file: {file_input}, output file: {file_output}, limit: {limit}, limit_lower: {limit_lower}, limit_upper: {limit_upper}, limit_percent: {limit_percent}, size_control: {size_control}, size_lower: {size_lower}, size_upper: {size_upper}, rw_ration: {rw_ration}, add_timestamp: {add_timestamp}, sort_by_timestamp_and_write: {sort_by_timestamp_and_write}, sort_by_write_and_timestamp: {sort_by_write_and_timestamp}")
     
     # calculate the file lines of the file_input
     with spinner_context('Calculate file line count ...') as spinner:
@@ -195,11 +202,11 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
         if size_control:
             file_output += f'_size_{size_lower}_{size_upper}'
         if rw_ration:
-            file_output += f'_rw_{rw_ration}'
+            file_output += f'_rw_ration_{rw_ration}'
         if sort_by_timestamp_and_write:
-            file_output += f'_sort_t_w'
+            file_output += f'_sort_by_timestamp_and_write'
         if sort_by_write_and_timestamp:
-            file_output += f'_sort_w_t'
+            file_output += f'_sort_by_write_and_timestamp'
         if add_timestamp:
             file_output += f'_timestamped'
         file_output += file_input_extension
