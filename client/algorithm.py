@@ -2,7 +2,7 @@
 
 import sys
 import time
-from os.path import dirname, join, realpath, basename
+from os.path import dirname, join, realpath, basename, splitext
 from os import makedirs
 import itertools
 import math
@@ -462,7 +462,7 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
     # run the algorithm
     if not only_preprocess:
         start_time = time.time()
-        suffix = basename(input_file).split('.')[0]
+        suffix = splitext(basename(input_file))[0]
         algorithm = AW_CUCB(data, file_metadata, suffix=suffix, migration=migration)
         algorithm.processing()
         logger.info(f'processing finished')

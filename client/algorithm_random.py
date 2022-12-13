@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from os.path import dirname, join, realpath, basename
+from os.path import dirname, join, realpath, basename, splitext
 from os import makedirs
 import numpy as np
 import fire
@@ -177,7 +177,7 @@ def main(input_file: str = join(dirname(realpath(__file__)), 'processed_test.txt
   logger.info(
     f'head of data: {data[:5]}, tail of data: {data[-5:]}, head of file_metadata: {file_metadata_list[:5]}, tail of file_metadata: {file_metadata_list[-5:]}')
   # run the algorithm
-  suffix = basename(input_file).split('.')[0]
+  suffix = splitext(basename(input_file))[0]
   algorithm = EACH_RANDOM(data, file_metadata,suffix=suffix)
   algorithm.processing()
   logger.info(f'processing finished')
