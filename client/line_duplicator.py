@@ -6,12 +6,12 @@ from os.path import splitext, exists
 from textwrap import dedent
 
 
-def main(file_input: str = 'web_2_sized_50000_55000_wp_ration_9.txt', file_output: str = None, line_num: str = '', copies: int = 10, copies_minmum: int = 1, random: bool = True, verbose: bool = True):
+def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_file: str = None, line_num: str = '', copies: int = 10, copies_minmum: int = 1, random_copy: bool = True, verbose: bool = True):
   """Duplicate lines from the input file, and write to the output file.
 
   Args:
-      file_input (str): The path to the file to be duplicated.
-      file_output (str, optional): The path to the output file. Defaults to file_input_processed.
+      input_file (str): The path to the file to be duplicated.
+      output_file (str, optional): The path to the output file. Defaults to input_file_processed.
       line_num (str): The line number to be duplicated. Defaults to ''. Support multiple lines, separated by comma or line number range, separated by dash.
       copies (int, optional): The number of copies. Defaults to 10.
       copies_minmum (int, optional): The minimum number of copies. Defaults to 1, only effective when random is True.
@@ -19,12 +19,12 @@ def main(file_input: str = 'web_2_sized_50000_55000_wp_ration_9.txt', file_outpu
       verbose (bool, optional): Whether to print verbose progress to the console. Defaults to True.
   """
 
-  if not exists(file_input):
-    raise FileNotFoundError(f"File {file_input} not found.")
+  if not exists(input_file):
+    raise FileNotFoundError(f"File {input_file} not found.")
 
-  if not file_output:
-    file_name, file_extension = splitext(file_input)
-    file_output = f'{file_name}_processed{file_extension}'
+  if not output_file:
+    file_name, file_extension = splitext(input_file)
+    output_file = f'{file_name}_processed{file_extension}'
   # parse the line_num
   parsed_line_num = []
   if line_num:
@@ -37,24 +37,24 @@ def main(file_input: str = 'web_2_sized_50000_55000_wp_ration_9.txt', file_outpu
         parsed_line_num.append(int(line_num_segement))
   if verbose:
     info = dedent(f'''
-      file_input: {file_input}
-      file_output: {file_output}
+      input_file: {input_file}
+      output_file: {output_file}
       line_num: {line_num}, parsed: {parsed_line_num}
       copies: {copies}
-      random: {random}
+      random_copy: {random_copy}
     ''')
     print(info)
-  with open(file_input, 'r') as fin, open(file_output, 'w') as fout:
+  with open(input_file, 'r') as fin, open(output_file, 'w') as fout:
     lines = fin.readlines()
     file_lines = len(lines)
-    print(f'input file {file_input} has {file_lines} lines')
+    print(f'input file {input_file} has {file_lines} lines')
     for line_num in parsed_line_num:
       line: str = lines[line_num]
-      if random:
+      if random_copy:
         copies = random.randint(copies_minmum, copies + 1)
       print(f'insert {copies} copies of {line.strip()} after index {line_num}')
       insert_lines(lines, line, line_num, copies, file_lines)
-    print(f'saving to {file_output}, {len(lines)} lines...')
+    print(f'saving to {output_file}, {len(lines)} lines...')
     fout.writelines(lines)
 
 
@@ -67,5 +67,5 @@ def insert_lines(lines: list[str], line: str, start: int, copies: int, file_line
 
 
 if __name__ == "__main__":
-  fire.core.Display = lambda lines, out: print(*lines, file=out)
+  # fire.core.Display = lambda lines, out: print(*lines, file=out)
   fire.Fire(main)
