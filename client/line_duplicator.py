@@ -14,8 +14,8 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
       output_file (str, optional): The path to the output file. Defaults to input_file_processed.
       line_num (str): The line number to be duplicated. Defaults to ''. Support multiple lines, separated by comma or line number range, separated by dash.
       copies (int, optional): The number of copies. Defaults to 10.
-      copies_minmum (int, optional): The minimum number of copies. Defaults to 1, only effective when random is True.
-      random (bool): Wether to dumplicate the lines random copies from 0 to copies. Defaults to True.
+      copies_minmum (int, optional): The minimum number of copies. Defaults to 1, only effective when random_copy is True.
+      random_copy (bool): Wether to dumplicate the lines random_copy copies from 0 to copies. Defaults to True.
       verbose (bool, optional): Whether to print verbose progress to the console. Defaults to True.
   """
 
