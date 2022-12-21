@@ -67,5 +67,5 @@ def insert_lines(lines: list[str], line: str, start: int, copies: int, file_line
 
 
 if __name__ == "__main__":
-  # fire.core.Display = lambda lines, out: print(*lines, file=out)
+  fire.core.Display = lambda lines, out: print(*lines, file=out)
   fire.Fire(main)
