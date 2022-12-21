@@ -134,6 +134,7 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
     
     # calculate the operation_field_index according to the has_human_readable_timestamp
     operation_field_index = 4 if has_human_readable_timestamp else 3
+    size_field_index = 6 if has_human_readable_timestamp else 5
     
     # Cut the lines to limit in each second, after sorting
     if limit:
@@ -144,7 +145,7 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
     # Filter by size
     if size_control:
         with spinner_context(f'Filtering lines by size size_lower: {size_lower}, size_upper: {size_upper}'):
-            lines = filter_lines_by_size(lines, size_lower, size_upper)
+            lines = filter_lines_by_size(lines, size_lower, size_upper, size_field_index)
         print(f'After filtering size, {len(lines)} lines left')
     
     # filter by rw_ratio
@@ -184,8 +185,9 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
                         f'Error parsing line {index}: {line}, skip')
                     continue
             has_human_readable_timestamp = True
-            # update operation_field_index
+            # update operation_field_index and size_field_index
             operation_field_index = 4 if has_human_readable_timestamp else 3
+            size_field_index = 6 if has_human_readable_timestamp else 5
         
     # Report the read and write count
     with spinner_context('Counting the read/write ...'):
@@ -243,15 +245,15 @@ def filter_lines_by_rw_ratio(lines, rw_ration, operation_field_index=4):
                 actural_write -= 1
     return results
 
-def filter_lines_by_size(lines, size_lower, size_upper):
+def filter_lines_by_size(lines, size_lower, size_upper, size_field_index=5):
     # use pandas to filter the lines by size
     # https://www.geeksforgeeks.org/ways-to-filter-pandas-dataframe-by-column-values/
     # https://www.geeksforgeeks.org/filter-pandas-dataframe-with-multiple-conditions/
     # dataFrame[(dataFrame['Salary']>=100000) & (dataFrame['Age']<40) & dataFrame['JOB'].str.startswith('P')][['Name','Age','Salary']]
     df = pd.DataFrame(lines)
     print(f'\ndf.head(): {df.head()}, df.shape: {df.shape}, len(lines): {len(lines)}\n')
-    # the size is in the 7th column, index 6
-    df = df[(df[6].astype(int) >= size_lower) & (df[6].astype(int) <= size_upper)]
+    # the size is in the 6th column, index 5 if the timestamp is not included
+    df = df[(df[size_field_index].astype(int) >= size_lower) & (df[size_field_index].astype(int) <= size_upper)]
     return df.values.tolist()
 
 def limit_lines_by_timestamp(lines, limit_lower, limit_upper, limit_percent):
