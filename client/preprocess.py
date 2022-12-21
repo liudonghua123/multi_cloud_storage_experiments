@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from pandas.core.groupby.generic import DataFrameGroupBy
-from os.path import splitext
+from os.path import splitext, basename, dirname
 
 
 def get_file_line_count(file_path):
@@ -195,7 +195,8 @@ def process(file_input: str = 'test.txt', file_output: str = None, limit: bool =
     # WRITING...
     # If the output file is not specified, then use the input file name with the some operation suffix
     if not file_output:
-        file_input_name, file_input_extension = splitext(file_input)
+        # Do not use the dirname of the file_input, just use the current directory as the output directory
+        file_input_name, file_input_extension = splitext(basename(file_input))
         file_output = f'{file_input_name}'
         if limit:
             file_output += f'_limit_{limit_lower}_{limit_upper}_{limit_percent}'
