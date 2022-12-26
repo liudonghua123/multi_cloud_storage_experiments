@@ -51,10 +51,15 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
     lines = fin.readlines()
     file_lines = len(lines)
     print(f'input file {input_file} has {file_lines} lines')
+    lines_to_copy = []
     for line_num in parsed_line_num:
       line: str = lines[line_num]
       if random_copy:
         copies = random.randint(copies_minmum, copies + 1)
+      lines_to_copy.append((line, copies, line_num))
+    # copy line, insert after the index of the line
+    # the location of the insert position may be changed after the insert
+    for line, copies, line_num in lines_to_copy:
       print(f'insert {copies} copies of {line.strip()} after index {line_num}')
       insert_lines(lines, line, line_num, copies, file_lines)
     print(f'saving to {output_file}, {len(lines)} lines...')
