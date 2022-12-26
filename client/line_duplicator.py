@@ -36,6 +36,8 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
         parsed_line_num.extend(range(int(start), int(end) + 1))
       else:
         parsed_line_num.append(int(line_num_segement))
+    # remove duplicates of parsed_line_num
+    parsed_line_num = sorted(list(set(parsed_line_num)))    
   if verbose:
     info = dedent(f'''
       input_file: {input_file}
