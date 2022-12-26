@@ -28,7 +28,8 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
   # parse the line_num
   parsed_line_num = []
   if line_num:
-    line_num_segements = line_num.split(',')
+    # line_num maybe a string or a tuple like (1, 2, 3)
+    line_num_segements = line_num.split(',') if type(line_num) == str else map(str, line_num) if type(line_num) == tuple else line_num
     for line_num_segement in line_num_segements:
       if '-' in line_num_segement:
         start, end = line_num_segement.split('-')
