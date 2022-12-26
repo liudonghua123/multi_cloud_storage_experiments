@@ -67,8 +67,8 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
 
 
 def insert_lines(lines: list[str], line: str, start: int, copies: int, file_lines: int):
-  # get random insert locations
-  locations = random.choices(range(start, file_lines), k=copies)
+  # get random insert locations, sort it
+  locations = sorted(random.choices(range(start, file_lines), k=copies))
   print(f'---> copy to {locations}')
   for location in locations:
     lines.insert(location, line)
