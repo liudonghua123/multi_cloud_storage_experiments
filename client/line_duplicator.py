@@ -6,7 +6,7 @@ from os.path import splitext, exists
 from textwrap import dedent
 
 
-def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_file: str = None, line_num: str = '', copies: int = 10, copies_minmum: int = 1, random_copy: bool = True, verbose: bool = True):
+def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_file: str = None, line_num: str = '', copies: int = 10, copies_minmum: int = 1, random_copy: bool = True, shuffle: bool = True, verbose: bool = True):
   """Duplicate lines from the input file, and write to the output file.
 
   Args:
@@ -16,6 +16,7 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
       copies (int, optional): The number of copies. Defaults to 10.
       copies_minmum (int, optional): The minimum number of copies. Defaults to 1, only effective when random_copy is True.
       random_copy (bool): Wether to dumplicate the lines random_copy copies from 0 to copies. Defaults to True.
+      shuffle (bool): Wether to shuffle the lines of file. Defaults to True.
       verbose (bool, optional): Whether to print verbose progress to the console. Defaults to True.
   """
 
@@ -45,6 +46,7 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
       line_num: {line_num}, parsed: {parsed_line_num}
       copies: {copies}
       random_copy: {random_copy}
+      shuffle: {shuffle}
     ''')
     print(info)
   with open(input_file, 'r') as fin, open(output_file, 'w') as fout:
@@ -62,6 +64,10 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
     for line, copies, line_num in lines_to_copy:
       print(f'insert {copies} copies of {line.strip()} after index {line_num}')
       insert_lines(lines, line, line_num, copies, file_lines)
+    # shuffle the lines
+    if shuffle:
+      print(f'shuffling {len(lines)} lines...')
+      random.shuffle(lines)
     print(f'saving to {output_file}, {len(lines)} lines...')
     fout.writelines(lines)
 
