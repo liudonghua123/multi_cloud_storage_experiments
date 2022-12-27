@@ -63,7 +63,7 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
     # the location of the insert position may be changed after the insert
     for line, copies, line_num in lines_to_copy:
       print(f'insert {copies} copies of {line.strip()} after index {line_num}')
-      insert_lines(lines, line, line_num, copies, file_lines)
+      insert_lines(lines, line, line_num, copies)
     # shuffle the lines
     if shuffle:
       print(f'shuffling {len(lines)} lines...')
@@ -72,10 +72,10 @@ def main(input_file: str = 'web_2_sized_50000_55000_wp_ration_9.txt', output_fil
     fout.writelines(lines)
 
 
-def insert_lines(lines: list[str], line: str, start: int, copies: int, file_lines: int):
+def insert_lines(lines: list[str], line: str, start: int, copies: int):
   # get random insert locations, sort it
-  locations = sorted(random.choices(range(start, file_lines), k=copies))
-  print(f'---> copy to {locations}')
+  locations = sorted(random.choices(range(start, len(lines)), k=copies))
+  print(f'---> copy to {locations}, selected from {start} to {len(lines)}')
   for location in locations:
     lines.insert(location, line)
 
